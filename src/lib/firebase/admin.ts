@@ -20,7 +20,16 @@ function loadServiceAccount() {
 
 function getAdminApp(): App {
   if (!app) {
-    app = getApps().length ? getApp() : initializeApp({ credential: cert(loadServiceAccount()) });
+    if (getApps().length) {
+      app = getApp();
+    } else if (process.env.FIRESTORE_EMULATOR_HOST) {
+      // Chạy nhắm vào Firebase Local Emulator Suite (test) — không cần service
+      // account thật, chỉ cần projectId khớp với .firebaserc để Admin SDK trỏ
+      // đúng emulator instance.
+      app = initializeApp({ projectId: process.env.GCLOUD_PROJECT || "khoerp-test" });
+    } else {
+      app = initializeApp({ credential: cert(loadServiceAccount()) });
+    }
   }
   return app;
 }

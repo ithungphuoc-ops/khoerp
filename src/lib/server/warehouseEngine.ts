@@ -159,11 +159,17 @@ export async function postMovements(
     });
 
     // ── 2) Mô phỏng tuần tự trong bộ nhớ để tính stock_before/after ──
-    const now = new Date().toISOString();
+    // Cộng thêm index (ms) vào createdAt của từng dòng: nếu nhiều movement
+    // trong CÙNG 1 lần gọi này dùng chung 1 timestamp, Firestore orderBy("
+    // createdAt") sẽ phá vỡ thế hòa (tie) bằng doc id ngẫu nhiên — làm sai
+    // thứ tự hiển thị ledger (dù tổng tồn kho cuối cùng vẫn đúng vì phép
+    // cộng có tính giao hoán). Lệch vài mili-giây không ảnh hưởng gì tới ý
+    // nghĩa "thời điểm tạo" ở quy mô một phiếu vài chục dòng.
+    const baseNow = Date.now();
     const ledgerEntries: WarehouseLedgerEntry[] = [];
     const results: PostResult["results"] = [];
 
-    for (const m of movements) {
+    movements.forEach((m, index) => {
       const key = tonKhoDocId(m.khoId, m.hangHoaId);
       const stockBefore = balances.get(key) ?? 0;
       const stockAfter = stockBefore + m.soLuong * m.direction;
@@ -182,11 +188,13 @@ export async function postMovements(
         stockBefore,
         stockAfter,
         createdBy: opts.userId ?? null,
-        createdAt: now,
+        createdAt: new Date(baseNow + index).toISOString(),
         notes: m.notes ?? null,
       });
       results.push({ khoId: m.khoId, hangHoaId: m.hangHoaId, stockBefore, stockAfter });
-    }
+    });
+
+    const now = new Date(baseNow).toISOString();
 
     // ── 3) Ghi số dư cuối cùng + toàn bộ ledger entries ──
     for (const key of keys) {
@@ -312,8 +320,11 @@ export async function rollbackDocument(params: {
         balances.set(keys[i], data?.soLuong ?? 0);
       });
 
-      const now = new Date().toISOString();
-      for (const entry of originalEntries) {
+      // Cùng lý do như postMovements(): lệch createdAt theo index để orderBy
+      // không bị hòa (tie) giữa nhiều REVERSAL entry tạo trong cùng 1 lượt.
+      const baseNow = Date.now();
+      const now = new Date(baseNow).toISOString();
+      originalEntries.forEach((entry, index) => {
         const key = tonKhoDocId(entry.khoId, entry.hangHoaId);
         const reverseDirection = (entry.direction * -1) as 1 | -1;
         const stockBefore = balances.get(key) ?? 0;
@@ -333,11 +344,11 @@ export async function rollbackDocument(params: {
           stockBefore,
           stockAfter,
           createdBy: params.userId ?? null,
-          createdAt: now,
+          createdAt: new Date(baseNow + index).toISOString(),
           notes: `Auto rollback of tx ${entry.id}`,
         };
         tx.set(adminDb.collection("warehouse_ledger").doc(), reversal);
-      }
+      });
 
       for (const key of keys) {
         const entry = originalEntries.find((e) => tonKhoDocId(e.khoId, e.hangHoaId) === key)!;
