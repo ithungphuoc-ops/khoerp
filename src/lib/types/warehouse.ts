@@ -185,8 +185,8 @@ export interface WarehouseAuditLog {
   entityNumber?: string | null;
   userId?: string | null;
   userEmail?: string | null;
-  oldValues?: Record<string, unknown> | null;
-  newValues?: Record<string, unknown> | null;
+  oldValues?: unknown;
+  newValues?: unknown;
   ipAddress?: string | null;
   module: string;
   createdAt: string;
