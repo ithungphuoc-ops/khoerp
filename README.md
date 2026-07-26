@@ -52,5 +52,53 @@ project thật/service account, chỉ cần Java (JRE 11+) cài sẵn trên máy
 
 ## Deploy
 
-Xem Phase 9 trong kế hoạch migrate — Vercel team `hpcons-ita-sset`, domain `khoerp.hpcore.vn`,
-Firebase project `hpcons-khoerp`.
+Hạ tầng đích: Firebase project `hpcons-khoerp` (Firestore + Auth), Vercel team
+`hpcons-ita-sset`, domain `khoerp.hpcore.vn`. Các bước dưới đây cần tài khoản/quyền
+truy cập của Sếp — Claude không tự làm được vì cần đăng nhập Firebase/Vercel/DNS thật.
+
+### 1. Firebase — bật Auth + deploy rules/indexes
+
+1. Firebase Console → project `hpcons-khoerp` → **Authentication → Sign-in method** →
+   bật **Email/Password**.
+2. Lấy Web config: **Project settings → Your apps → SDK setup and configuration** →
+   copy 6 giá trị vào biến `NEXT_PUBLIC_FIREBASE_*` (xem `.env.example`).
+3. Lấy Service Account: **Project settings → Service accounts → Generate new private
+   key** → tải file JSON, dán nguyên nội dung (1 dòng) vào biến
+   `FIREBASE_SERVICE_ACCOUNT_KEY` — **không commit file này vào git**.
+4. Deploy rules + indexes (cần cài `firebase-tools` — đã có sẵn trong devDependencies):
+   ```bash
+   npx firebase login
+   npx firebase deploy --only firestore:rules,firestore:indexes --project hpcons-khoerp
+   ```
+
+### 2. Vercel — tạo project + env vars
+
+1. Vercel team `hpcons-ita-sset` → **Add New → Project** → import repo GitHub
+   `ithungphuoc-ops/khoerp`. Vercel tự nhận diện Next.js, không cần cấu hình build command.
+2. **Settings → Environment Variables** → thêm toàn bộ biến trong `.env.example`
+   (6 biến `NEXT_PUBLIC_FIREBASE_*` + `FIREBASE_SERVICE_ACCOUNT_KEY`) cho cả 3 môi
+   trường Production/Preview/Development.
+3. Deploy lần đầu (tự động khi push lên nhánh `main`, hoặc bấm Deploy thủ công).
+
+### 3. Domain `khoerp.hpcore.vn`
+
+1. Vercel project → **Settings → Domains** → thêm `khoerp.hpcore.vn` → Vercel cho biết
+   bản ghi DNS cần tạo (thường là CNAME trỏ về `cname.vercel-dns.com`).
+2. Vào nơi quản lý DNS của domain `hpcore.vn` → tạo bản ghi CNAME đó cho subdomain `khoerp`.
+3. Đợi DNS lan truyền (vài phút đến vài giờ) — Vercel tự cấp SSL sau khi domain xác minh xong.
+
+### 4. Firebase Auth — thêm domain được phép (bắt buộc, hay bị quên)
+
+Firebase Auth chỉ cho đăng nhập từ các domain có trong danh sách cho phép. Vào
+**Authentication → Settings → Authorized domains** → thêm:
+- `khoerp.hpcore.vn`
+- domain preview mặc định của Vercel (dạng `*.vercel.app`, thêm domain preview cụ thể
+  nếu cần test trên đó)
+
+Thiếu bước này sẽ gặp lỗi `auth/unauthorized-domain` khi đăng nhập trên domain thật.
+
+### 5. Go-live
+
+Vì đây là big-bang migration (dữ liệu Supabase hiện tại chỉ là demo, không cần di chuyển
+— xem quyết định ở đầu quá trình chuyển đổi), sau khi xác nhận `khoerp.hpcore.vn` chạy ổn
+định, có thể tắt hệ Python/Supabase cũ.
