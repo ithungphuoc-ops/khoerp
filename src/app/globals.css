@@ -1,26 +1,190 @@
 @import "tailwindcss";
 
+/* ── HPCons Design System V2.0 — ERP Dark Theme ──────────────────
+   Port từ frontend/src/index.css (bản Vite/React gốc) + tailwind.config.js.
+   Tailwind v4 dùng @theme để tự sinh utility class (bg-hp-*, text-hp-*,
+   rounded-hp-*, shadow-hp-*) — không cần hàm opacityValue thủ công như v3,
+   modifier /10 /20... hoạt động tự động cho mọi màu khai báo trong @theme. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --hp-bg: #0b0e1a;
+  --hp-card: #131929;
+  --hp-surface: #1a2035;
+  --hp-surface-2: #1f2842;
+
+  --hp-sidebar: #0d1120;
+  --hp-sidebar-hover: #1a2035;
+  --hp-sidebar-active: #1e2d4a;
+  --hp-sidebar-width: 240px;
+
+  --hp-header: #0d1120;
+  --hp-header-h: 56px;
+
+  --hp-border: #1e2d4a;
+  --hp-border-subtle: #162038;
+
+  --hp-primary: #2dd4bf;
+  --hp-primary-hover: #14b8a6;
+  --hp-accent: #6366f1;
+  --hp-accent-hover: #4f46e5;
+
+  --hp-text: #e2e8f0;
+  --hp-text-secondary: #94a3b8;
+  --hp-text-muted: #64748b;
+  --hp-text-disabled: #334155;
+
+  --hp-success: #22c55e;
+  --hp-warning: #f59e0b;
+  --hp-danger: #ef4444;
+  --hp-info: #3b82f6;
+
+  --hp-radius-sm: 4px;
+  --hp-radius-md: 8px;
+  --hp-radius-lg: 12px;
+  --hp-radius-xl: 16px;
+
+  --hp-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --hp-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --hp-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-hp-bg: var(--hp-bg);
+  --color-hp-card: var(--hp-card);
+  --color-hp-surface: var(--hp-surface);
+  --color-hp-surface-2: var(--hp-surface-2);
+  --color-hp-sidebar: var(--hp-sidebar);
+  --color-hp-sidebar-hover: var(--hp-sidebar-hover);
+  --color-hp-sidebar-active: var(--hp-sidebar-active);
+  --color-hp-header: var(--hp-header);
+  --color-hp-border: var(--hp-border);
+  --color-hp-border-subtle: var(--hp-border-subtle);
+  --color-hp-primary: var(--hp-primary);
+  --color-hp-primary-hover: var(--hp-primary-hover);
+  --color-hp-accent: var(--hp-accent);
+  --color-hp-accent-hover: var(--hp-accent-hover);
+  --color-hp-text: var(--hp-text);
+  --color-hp-text-secondary: var(--hp-text-secondary);
+  --color-hp-text-muted: var(--hp-text-muted);
+  --color-hp-text-disabled: var(--hp-text-disabled);
+  --color-hp-success: var(--hp-success);
+  --color-hp-warning: var(--hp-warning);
+  --color-hp-danger: var(--hp-danger);
+  --color-hp-info: var(--hp-info);
+
+  --radius-hp-sm: var(--hp-radius-sm);
+  --radius-hp-md: var(--hp-radius-md);
+  --radius-hp-lg: var(--hp-radius-lg);
+  --radius-hp-xl: var(--hp-radius-xl);
+
+  --shadow-hp-sm: var(--hp-shadow-sm);
+  --shadow-hp-md: var(--hp-shadow-md);
+  --shadow-hp-lg: var(--hp-shadow-lg);
+
+  --font-sans: var(--font-geist-sans), Inter, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--hp-bg);
+  color: var(--hp-text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--hp-border);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--hp-text-disabled);
+}
+
+@layer components {
+  .hp-card {
+    @apply bg-hp-card border border-hp-border rounded-hp-lg;
+  }
+
+  .hp-btn {
+    @apply inline-flex items-center gap-2 px-4 h-9 rounded-hp-md font-medium text-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Tailwind v4: @apply không thể tham chiếu 1 class tự định nghĩa khác
+     (.hp-btn) trong cùng @layer components — lặp lại style nền thay vì
+     @apply hp-btn để tránh lỗi "unknown utility class". */
+  .hp-btn-primary {
+    @apply inline-flex items-center gap-2 px-4 h-9 rounded-hp-md font-medium text-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed bg-hp-primary text-[#0b0e1a] hover:bg-hp-primary-hover;
+  }
+
+  .hp-btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 h-9 rounded-hp-md font-medium text-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed bg-hp-surface border border-hp-border text-hp-text-secondary hover:text-hp-text hover:border-hp-primary/40;
+  }
+
+  .hp-btn-ghost {
+    @apply inline-flex items-center gap-2 px-4 h-9 rounded-hp-md font-medium text-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed text-hp-text-muted hover:text-hp-text hover:bg-hp-surface;
+  }
+
+  .hp-input {
+    @apply w-full h-9 px-3 rounded-hp-md bg-hp-surface border border-hp-border text-hp-text text-sm placeholder:text-hp-text-disabled focus:outline-none transition-colors duration-150;
+  }
+
+  .hp-input:focus {
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.3);
+  }
+
+  .hp-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .hp-skeleton {
+    @apply bg-hp-surface animate-pulse rounded-hp-md;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.animate-slideIn {
+  animation: slideIn 0.15s ease-out;
 }

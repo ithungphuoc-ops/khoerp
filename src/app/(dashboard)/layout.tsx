@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/server/auth";
-import { LogoutButton } from "./LogoutButton";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { Header } from "@/components/layout/Header";
 
 export default async function DashboardLayout({
   children,
@@ -16,17 +17,12 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
-        <span className="font-semibold text-gray-900">HPCons ERP</span>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-600">
-            {user.hoTen} · <span style={{ color: user.roleColor }}>{user.role}</span>
-          </span>
-          <LogoutButton />
-        </div>
-      </header>
-      <main className="flex-1 bg-gray-50 p-6">{children}</main>
+    <div className="flex h-screen overflow-hidden" style={{ background: "var(--hp-bg)" }}>
+      <Sidebar />
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <Header />
+        <main className="flex-1 overflow-y-auto">{children}</main>
+      </div>
     </div>
   );
 }
