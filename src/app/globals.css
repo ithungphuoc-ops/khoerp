@@ -143,6 +143,10 @@ body {
     @apply inline-flex items-center gap-2 px-4 h-9 rounded-hp-md font-medium text-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed text-hp-text-muted hover:text-hp-text hover:bg-hp-surface;
   }
 
+  .hp-btn-danger {
+    @apply inline-flex items-center gap-2 px-4 h-9 rounded-hp-md font-medium text-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed bg-hp-danger text-white hover:opacity-90;
+  }
+
   .hp-input {
     @apply w-full h-9 px-3 rounded-hp-md bg-hp-surface border border-hp-border text-hp-text text-sm placeholder:text-hp-text-disabled focus:outline-none transition-colors duration-150;
   }

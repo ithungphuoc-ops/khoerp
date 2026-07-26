@@ -155,6 +155,8 @@ export async function POST(req: NextRequest) {
         ngayChungTu: body.ngay_chung_tu,
         khoXuatId: body.kho_xuat_id,
         khoNhapId: body.kho_nhap_id,
+        nguoiChuyen: body.nguoi_chuyen,
+        lyDoChuyen: body.ly_do_chuyen || "Chuyển kho nội bộ",
         tongSoLuong: chiTiet.reduce((sum, ct) => sum + ct.soLuong, 0),
         trangThai: "da_duyet",
         ghiChu: body.ghi_chu,

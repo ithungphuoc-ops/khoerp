@@ -108,6 +108,8 @@ export interface PhieuChuyenKho {
   ngayChungTu: string;
   khoXuatId?: string; // = maKho
   khoNhapId?: string;
+  nguoiChuyen?: string;
+  lyDoChuyen?: string;
   lenhDieuDong?: string;
   ngayLenh?: string;
   cua?: string;
