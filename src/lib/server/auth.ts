@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { adminDb } from "@/lib/firebase/admin";
 import { SESSION_COOKIE_NAME, verifySessionCookie } from "@/lib/server/session";
+import { ApiError } from "@/lib/server/apiError";
 import type { AppUser, Role } from "@/lib/types/system";
 
 const DEFAULT_ROLE_NAME = "NHAN_VIEN";
@@ -60,7 +61,6 @@ export async function getOrCreateAppUser(uid: string, email: string): Promise<Cu
   const roleId = await findDefaultRoleId();
   const now = new Date().toISOString();
   const newUser: AppUser = {
-    id: uid,
     email,
     hoTen: email.split("@")[0],
     roleId,
@@ -102,4 +102,11 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!decoded || !decoded.uid || !decoded.email) return null;
 
   return getOrCreateAppUser(decoded.uid, decoded.email);
+}
+
+/** Như getCurrentUser() nhưng throw ApiError(401) nếu chưa đăng nhập — dùng trong route handler. */
+export async function requireUser(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) throw new ApiError(401, "Chưa đăng nhập");
+  return user;
 }

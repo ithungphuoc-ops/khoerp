@@ -159,7 +159,6 @@ export type RefType = "nhap_kho" | "xuat_kho" | "chuyen_kho" | "dieu_chinh" | "k
  * không bao giờ UPDATE/DELETE. Thay cho warehouse.warehouse_transaction.
  */
 export interface WarehouseLedgerEntry {
-  id: string;
   transactionType: TransactionType;
   refType: RefType;
   refId: string;
@@ -180,7 +179,6 @@ export type AuditAction = "CREATE" | "UPDATE" | "DELETE" | "POST" | "APPROVE" | 
 
 /** Firestore collection "warehouse_audit_log" — doc id = auto id. Best-effort. */
 export interface WarehouseAuditLog {
-  id: string;
   action: AuditAction;
   entityType: string;
   entityId?: string | null;

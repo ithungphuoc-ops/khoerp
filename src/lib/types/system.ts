@@ -1,9 +1,9 @@
 /**
- * Firestore collection "roles" — doc id = auto id.
+ * Firestore collection "roles" — doc id = auto id (KHÔNG lưu lại id vào field,
+ * doc.id của Firestore đã đóng vai trò đó — tránh trùng key khi spread).
  * Nguồn gốc: bảng system.roles (sql/001_system_schema.sql).
  */
 export interface Role {
-  id: string;
   tenRole: string;
   moTa?: string;
   color: string;
@@ -51,7 +51,6 @@ export interface Module {
  * roleId trỏ tới doc id trong "roles".
  */
 export interface AppUser {
-  id: string;
   email: string;
   hoTen?: string;
   avatarUrl?: string;
@@ -78,7 +77,6 @@ export interface AppUser {
  * Đặt dưới user thay vì top-level để khớp tự nhiên với rule "chỉ xem của mình".
  */
 export interface Notification {
-  id: string;
   tieuDe: string;
   noiDung?: string;
   loai: "info" | "success" | "warning" | "error";
@@ -92,7 +90,6 @@ export interface Notification {
  * Firestore collection "activity_log" — doc id = auto id. Chỉ ghi qua Admin SDK.
  */
 export interface ActivityLog {
-  id: string;
   userId?: string;
   moduleCode?: string;
   action: string;
@@ -108,7 +105,6 @@ export interface ActivityLog {
  * memberIds thay cho bảng join system.user_groups (denormalize theo hướng Firestore).
  */
 export interface Group {
-  id: string;
   tenNhom: string;
   moTa?: string;
   color: string;
