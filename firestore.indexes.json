@@ -1,0 +1,80 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "warehouse_phieu_nhap",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "khoId", "order": "ASCENDING" },
+        { "fieldPath": "ngayHachToan", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "warehouse_phieu_xuat",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "khoId", "order": "ASCENDING" },
+        { "fieldPath": "ngayHachToan", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "warehouse_phieu_chuyen",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "khoXuatId", "order": "ASCENDING" },
+        { "fieldPath": "ngayHachToan", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "warehouse_phieu_chuyen",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "khoNhapId", "order": "ASCENDING" },
+        { "fieldPath": "ngayHachToan", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "warehouse_ledger",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "refType", "order": "ASCENDING" },
+        { "fieldPath": "refId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "warehouse_ledger",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "khoId", "order": "ASCENDING" },
+        { "fieldPath": "hangHoaId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "warehouse_audit_log",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "entityType", "order": "ASCENDING" },
+        { "fieldPath": "entityId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "activity_log",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "daDoc", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

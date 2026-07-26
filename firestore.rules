@@ -1,0 +1,44 @@
+rules_version = '2';
+
+// ============================================================
+// HPCons ERP (khoerp) — Firestore Security Rules
+// ------------------------------------------------------------
+// Kiến trúc: mọi nghiệp vụ ghi/đọc quan trọng đi qua Next.js Route
+// Handlers dùng Firebase Admin SDK (server), Admin SDK BYPASS rules
+// này hoàn toàn. Rules ở đây chỉ kiểm soát truy cập TRỰC TIẾP từ
+// client SDK (trình duyệt) — mặc định DENY ALL, chỉ mở đúng những gì
+// client cần đọc trực tiếp (profile của chính mình, thông báo của
+// chính mình) để hỗ trợ realtime listener, không phục vụ ghi dữ liệu.
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Mặc định: từ chối tất cả truy cập client trực tiếp.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // users/{uid}: cho phép chính chủ đọc profile của mình (realtime),
+    // KHÔNG cho phép client tự ghi (đổi role/active phải qua API server).
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      // users/{uid}/notifications/{id}: chỉ chủ tài khoản đọc, và chỉ được
+      // tự đánh dấu đã đọc (daDoc), không đổi field khác.
+      match /notifications/{notifId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow update: if request.auth != null
+                      && request.auth.uid == uid
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['daDoc']);
+      }
+    }
+
+    // modules: danh mục phân hệ, không nhạy cảm — cho phép mọi user đã đăng
+    // nhập đọc để dựng menu/sidebar phía client mà không cần round-trip API.
+    match /modules/{moduleCode} {
+      allow read: if request.auth != null;
+    }
+  }
+}
