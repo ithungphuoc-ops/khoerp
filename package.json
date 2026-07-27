@@ -10,6 +10,12 @@
     "test": "vitest run",
     "test:emulator": "firebase emulators:exec --only firestore,auth \"vitest run\""
   },
+  "overrides": {
+    "jwks-rsa": {
+      ".": "3.2.2",
+      "jose": "4.15.4"
+    }
+  },
   "dependencies": {
     "clsx": "^2.1.1",
     "firebase-admin": "^14.2.0",
