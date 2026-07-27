@@ -1,5 +1,5 @@
 import "server-only";
-import { cert, getApps, getApp, initializeApp, type App } from "firebase-admin/app";
+import { cert, getApp, initializeApp, type App } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { getAuth, type Auth } from "firebase-admin/auth";
 
@@ -20,15 +20,23 @@ function loadServiceAccount() {
 
 function getAdminApp(): App {
   if (!app) {
-    if (getApps().length) {
+    try {
+      // getApp() (không truyền tên) chỉ trả về app tên "[DEFAULT]" — trước đây
+      // dùng getApps().length > 0 để suy ra "đã có app mặc định" là SAI, vì
+      // lib/firebase/hpcoreAdmin.ts khởi tạo thêm 1 app tên "hpcore" trong
+      // cùng process; getApps() đếm luôn app đó, khiến getApp() bị gọi nhầm
+      // dù chưa hề có app mặc định, ném lỗi "app/no-app" (chỉ lộ ra khi cả 2
+      // app cùng được dùng trong 1 request — tức là sau khi đăng nhập thật).
       app = getApp();
-    } else if (process.env.FIRESTORE_EMULATOR_HOST) {
-      // Chạy nhắm vào Firebase Local Emulator Suite (test) — không cần service
-      // account thật, chỉ cần projectId khớp với .firebaserc để Admin SDK trỏ
-      // đúng emulator instance.
-      app = initializeApp({ projectId: process.env.GCLOUD_PROJECT || "khoerp-test" });
-    } else {
-      app = initializeApp({ credential: cert(loadServiceAccount()) });
+    } catch {
+      if (process.env.FIRESTORE_EMULATOR_HOST) {
+        // Chạy nhắm vào Firebase Local Emulator Suite (test) — không cần
+        // service account thật, chỉ cần projectId khớp với .firebaserc để
+        // Admin SDK trỏ đúng emulator instance.
+        app = initializeApp({ projectId: process.env.GCLOUD_PROJECT || "khoerp-test" });
+      } else {
+        app = initializeApp({ credential: cert(loadServiceAccount()) });
+      }
     }
   }
   return app;
