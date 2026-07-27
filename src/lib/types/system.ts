@@ -12,24 +12,6 @@ export interface Role {
 }
 
 /**
- * Firestore subcollection "roles/{roleId}/permissions" — doc id = moduleCode.
- * Thay cho bảng join system.permissions(role_id, module_code) — mỗi role sở hữu
- * trực tiếp danh sách quyền của mình, tránh phải query 2 lượt như bản Postgres.
- */
-export interface Permission {
-  moduleCode: string;
-  canView: boolean;
-  canCreate: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-  canApprove: boolean;
-  canImport: boolean;
-  canExport: boolean;
-  canAi: boolean;
-  canReport: boolean;
-}
-
-/**
  * Firestore collection "modules" — doc id = code (module code, vd "warehouse").
  * Dùng code làm doc id để khỏi phải tra UUID như bản gốc.
  */
@@ -125,15 +107,6 @@ export interface Setting {
   nhom: string;
   updatedBy?: string;
   updatedAt: string;
-}
-
-/** DTO của GET /api/iam/roles — dùng bởi trang Vai trò và bộ chọn vai trò. */
-export interface RoleRow {
-  id: string;
-  tenRole: string;
-  moTa?: string;
-  color: string;
-  active: boolean;
 }
 
 /** DTO của GET /api/iam/accounts — dùng bởi trang Nhóm để chọn thành viên. */
