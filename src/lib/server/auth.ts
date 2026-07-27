@@ -116,12 +116,31 @@ export type AuthState =
  *   - "forbidden": đã đăng nhập hpcore nhưng chưa được cấp quyền app này → hiện
  *     thông báo tại chỗ, KHÔNG redirect (tránh vòng lặp vô hạn).
  */
+/**
+ * ⚠️ TẠM THỜI (theo yêu cầu Sếp, giai đoạn test nội bộ trước khi go-live thật):
+ * bỏ chặn "forbidden" — ai đăng nhập được HPCore cũng vào test khoerp được
+ * luôn, không cần chờ cấp app_permissions riêng. Mặc định coi như ADMIN để
+ * test đầy đủ mọi thao tác (tạo kho, nhập/xuất/chuyển...). Việc cấp quyền
+ * theo từng người sẽ làm lại sau khi test xong.
+ *
+ * Để BẬT LẠI chặn theo quyền: xóa biến này và dòng `role = TEMP_OPEN_ROLE`
+ * bên dưới, để nguyên `if (!role) return { kind: "forbidden" };` như cũ.
+ */
+const TEMP_OPEN_ACCESS = true;
+const TEMP_OPEN_ROLE = "ADMIN";
+
 export async function getAuthState(): Promise<AuthState> {
   const session = await getHpcoreSession();
   if (!session) return { kind: "unauthenticated" };
 
-  const role = await getHpcoreAppRole(session.uid);
-  if (!role) return { kind: "forbidden" };
+  let role = await getHpcoreAppRole(session.uid);
+  if (!role) {
+    if (TEMP_OPEN_ACCESS) {
+      role = TEMP_OPEN_ROLE;
+    } else {
+      return { kind: "forbidden" };
+    }
+  }
 
   const user = await syncAppUser(session, role);
   return { kind: "ok", user };
