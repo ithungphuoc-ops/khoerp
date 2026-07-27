@@ -20,6 +20,7 @@ function loadServiceAccount() {
 
 function getAdminApp(): App {
   if (!app) {
+    let isNewApp = false;
     try {
       // getApp() (không truyền tên) chỉ trả về app tên "[DEFAULT]" — trước đây
       // dùng getApps().length > 0 để suy ra "đã có app mặc định" là SAI, vì
@@ -37,6 +38,16 @@ function getAdminApp(): App {
       } else {
         app = initializeApp({ credential: cert(loadServiceAccount()) });
       }
+      isNewApp = true;
+    }
+    if (isNewApp) {
+      // Rất nhiều field trong các type (ChiTietPhieu.ghiChu, tkNo, tkCo,
+      // donViTinh...) là optional — khi UI không điền, giá trị là `undefined`,
+      // mà Firestore mặc định NÉM LỖI với field undefined (khác null). Bật
+      // ignoreUndefinedProperties để Firestore tự bỏ qua field undefined thay
+      // vì phải dọn tay ở từng route. Phải gọi settings() ngay sau khi tạo
+      // app, TRƯỚC bất kỳ thao tác Firestore nào khác trên app này.
+      getFirestore(app).settings({ ignoreUndefinedProperties: true });
     }
   }
   return app;

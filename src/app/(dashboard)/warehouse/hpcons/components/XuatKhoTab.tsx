@@ -339,7 +339,7 @@ function PhieuModal({ khoList, phieu, onClose, onSaved }: { khoList: KhoRow[]; p
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-hp-bg border border-hp-border rounded-hp-lg w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
+      <div className="bg-hp-bg border border-hp-border rounded-hp-lg w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl">
         <div className="flex items-center justify-between px-5 py-3 border-b border-hp-border">
           <div className="flex items-center gap-2">
             <ArrowUpFromLine size={16} className="text-hp-danger" />
