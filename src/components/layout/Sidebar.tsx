@@ -86,7 +86,6 @@ const MENU: MenuItem[] = [
     route: "/iam",
     children: [
       { code: "iam_dash", label: "Dashboard", icon: "LayoutDashboard", route: "/iam" },
-      { code: "iam_accounts", label: "Tài khoản", icon: "User", route: "/iam/accounts" },
       { code: "iam_roles", label: "Vai trò & Phân quyền", icon: "ShieldCheck", route: "/iam/roles" },
       { code: "iam_groups", label: "Nhóm người dùng", icon: "Users", route: "/iam/groups" },
       { code: "iam_audit", label: "Nhật ký hoạt động", icon: "ClipboardList", route: "/iam/audit" },

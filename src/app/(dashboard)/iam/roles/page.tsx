@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { Plus, Save, Copy, Trash2, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 import { api } from "@/lib/apiClient";
-import type { RoleRow } from "../accounts/page";
+import type { RoleRow } from "@/lib/types/system";
 
 interface PermissionRow {
   module_code: string;

@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { adminDb } from "@/lib/firebase/admin";
 import { requireUser } from "@/lib/server/auth";
-import { isAdmin, requireManager } from "@/lib/server/permissions";
-import { logActivity } from "@/lib/server/activityLog";
-import { handleApiError, ApiError } from "@/lib/server/apiError";
+import { requireManager } from "@/lib/server/permissions";
+import { handleApiError } from "@/lib/server/apiError";
 import type { AppUser, Role } from "@/lib/types/system";
 
 /**
+ * Chỉ còn GET (danh sách) — tạo/sửa/khóa tài khoản đã chuyển hẳn sang giao
+ * diện quản trị của HPCore (account.hpcore.vn). Endpoint này vẫn cần cho
+ * trang Nhóm (chọn thành viên) và bộ chọn tài khoản dùng chung trong IAM.
+ *
  * Firestore không có ILIKE/OR full-text search như Postgres. Với quy mô tài
  * khoản nội bộ một công ty (vài chục–vài trăm), fetch toàn bộ rồi lọc/phân
  * trang trong bộ nhớ là đủ nhanh và đơn giản hơn nhiều so với dựng search
@@ -68,90 +71,6 @@ export async function GET(req: NextRequest) {
     }));
 
     return NextResponse.json({ accounts, total, page, limit });
-  } catch (e) {
-    return handleApiError(e);
-  }
-}
-
-interface AccountCreateBody {
-  email: string;
-  password: string;
-  hoTen?: string;
-  username?: string;
-  soDienThoai?: string;
-  phongBan?: string;
-  chucVu?: string;
-  ngaySinh?: string;
-  gioiTinh?: string;
-  moTa?: string;
-  roleId?: string;
-}
-
-const CREATE_COPY_FIELDS = [
-  "hoTen",
-  "username",
-  "soDienThoai",
-  "phongBan",
-  "chucVu",
-  "ngaySinh",
-  "gioiTinh",
-  "moTa",
-  "roleId",
-] as const;
-
-export async function POST(req: NextRequest) {
-  try {
-    const user = await requireUser();
-    if (!isAdmin(user)) throw new ApiError(403, "Chỉ ADMIN mới được tạo tài khoản");
-
-    const body = (await req.json()) as AccountCreateBody;
-    if (!body.email || !body.password) {
-      throw new ApiError(400, "Thiếu email hoặc mật khẩu");
-    }
-
-    let newUid: string;
-    try {
-      const authUser = await adminAuth.createUser({
-        email: body.email,
-        password: body.password,
-        emailVerified: true,
-      });
-      newUid = authUser.uid;
-    } catch (e) {
-      throw new ApiError(400, `Lỗi tạo Auth: ${e instanceof Error ? e.message : String(e)}`);
-    }
-
-    const now = new Date().toISOString();
-    const data: Record<string, unknown> = {
-      email: body.email,
-      active: true,
-      isLocked: false,
-      loginAttempts: 0,
-      createdAt: now,
-      updatedAt: now,
-    };
-    for (const field of CREATE_COPY_FIELDS) {
-      if (body[field]) data[field] = body[field];
-    }
-    if (!data.hoTen) data.hoTen = body.email.split("@")[0];
-
-    try {
-      await adminDb.collection("users").doc(newUid).set(data);
-    } catch (e) {
-      await adminAuth.deleteUser(newUid).catch(() => {});
-      throw new ApiError(500, `Lỗi tạo profile: ${e instanceof Error ? e.message : String(e)}`);
-    }
-
-    await logActivity({
-      actorId: user.id,
-      moduleCode: "iam_accounts",
-      action: "CREATE_USER",
-      entity: "users",
-      entityId: newUid,
-      moTa: `Tạo tài khoản ${body.email}`,
-    });
-
-    return NextResponse.json({ message: "Tạo tài khoản thành công", user_id: newUid });
   } catch (e) {
     return handleApiError(e);
   }

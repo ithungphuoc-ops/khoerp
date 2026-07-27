@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Users, Trash2, UserMinus, X, RefreshCw } from "lucide-react";
 import { api } from "@/lib/apiClient";
-import type { AccountRow } from "../accounts/page";
+import type { AccountRow } from "@/lib/types/system";
 
 interface GroupRow {
   id: string;

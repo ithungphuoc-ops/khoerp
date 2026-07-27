@@ -126,3 +126,30 @@ export interface Setting {
   updatedBy?: string;
   updatedAt: string;
 }
+
+/** DTO của GET /api/iam/roles — dùng bởi trang Vai trò và bộ chọn vai trò. */
+export interface RoleRow {
+  id: string;
+  tenRole: string;
+  moTa?: string;
+  color: string;
+  active: boolean;
+}
+
+/** DTO của GET /api/iam/accounts — dùng bởi trang Nhóm để chọn thành viên. */
+export interface AccountRow {
+  id: string;
+  email: string;
+  hoTen?: string;
+  username?: string;
+  soDienThoai?: string;
+  phongBan?: string;
+  chucVu?: string;
+  avatarUrl?: string;
+  active: boolean;
+  isLocked: boolean;
+  lastLogin?: string | null;
+  createdAt: string;
+  roleId?: string | null;
+  roles: { id: string; tenRole: string; color: string } | null;
+}
