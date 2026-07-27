@@ -16,6 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "HPCons ERP",
   description: "HPCons ERP Platform",
+  icons: { icon: "/logo.png" },
 };
 
 export default function RootLayout({
