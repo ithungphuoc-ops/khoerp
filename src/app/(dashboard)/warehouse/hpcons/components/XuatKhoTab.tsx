@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Search, RefreshCw, Trash2, ChevronLeft, ChevronRight, ArrowUpFromLine, X, Save, Printer, Package, Edit2, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { api } from "@/lib/apiClient";
 import { HangHoaInput } from "./HangHoaInput";
+import { EntityAutocomplete } from "./EntityAutocomplete";
 import { emptyChiTietRow, chiTietToBody, type KhoRow, type HangHoaRow, type ChiTietRow } from "./types";
 
 interface PhieuXuatForm {
@@ -362,7 +363,13 @@ function PhieuModal({ khoList, phieu, onClose, onSaved }: { khoList: KhoRow[]; p
             </div>
             <div>
               <label className="text-xs text-hp-text-muted mb-1 block">Phòng ban</label>
-              <input className="hp-input w-full" value={form.phong_ban} onChange={(e) => set("phong_ban", e.target.value)} placeholder="Phòng ban / Đội" />
+              <EntityAutocomplete
+                apiPath="/warehouse/phong-ban"
+                value={form.phong_ban}
+                onChange={(row) => set("phong_ban", row.ten)}
+                onTextChange={(v) => set("phong_ban", v)}
+                placeholder="Phòng ban / Đội"
+              />
             </div>
             <div>
               <label className="text-xs text-hp-text-muted mb-1 block">Diễn giải</label>
@@ -370,7 +377,13 @@ function PhieuModal({ khoList, phieu, onClose, onSaved }: { khoList: KhoRow[]; p
             </div>
             <div>
               <label className="text-xs text-hp-text-muted mb-1 block">Công trình</label>
-              <input className="hp-input w-full" value={form.cong_trinh} onChange={(e) => set("cong_trinh", e.target.value)} placeholder="Tên công trình" />
+              <EntityAutocomplete
+                apiPath="/warehouse/cong-trinh"
+                value={form.cong_trinh}
+                onChange={(row) => set("cong_trinh", row.ten)}
+                onTextChange={(v) => set("cong_trinh", v)}
+                placeholder="Tên công trình"
+              />
             </div>
             <div>
               <label className="text-xs text-hp-text-muted mb-1 block">Nhân viên xuất</label>

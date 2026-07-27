@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Package, ArrowDownToLine, ArrowUpFromLine, BarChart2, Box, ArrowRightLeft, Warehouse, type LucideIcon } from "lucide-react";
+import { Package, ArrowDownToLine, ArrowUpFromLine, BarChart2, Box, ArrowRightLeft, Warehouse, Building2, HardHat, ClipboardCheck, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/apiClient";
 import { NhapKhoTab } from "./components/NhapKhoTab";
 import { XuatKhoTab } from "./components/XuatKhoTab";
@@ -9,6 +9,9 @@ import { TonKhoTab } from "./components/TonKhoTab";
 import { HangHoaTab } from "./components/HangHoaTab";
 import { ChuyenKhoTab } from "./components/ChuyenKhoTab";
 import { KhoTab } from "./components/KhoTab";
+import { PhongBanTab } from "./components/PhongBanTab";
+import { CongTrinhTab } from "./components/CongTrinhTab";
+import { KiemKeTab } from "./components/KiemKeTab";
 import type { KhoRow } from "./components/types";
 
 const TABS: { key: string; label: string; icon: LucideIcon }[] = [
@@ -16,8 +19,11 @@ const TABS: { key: string; label: string; icon: LucideIcon }[] = [
   { key: "xuat", label: "Xuất kho", icon: ArrowUpFromLine },
   { key: "chuyen", label: "Chuyển kho", icon: ArrowRightLeft },
   { key: "ton", label: "Tồn kho", icon: BarChart2 },
+  { key: "kiemke", label: "Kiểm kê", icon: ClipboardCheck },
   { key: "hanghoa", label: "Hàng hóa", icon: Box },
   { key: "dskho", label: "Danh sách kho", icon: Warehouse },
+  { key: "phongban", label: "Phòng ban", icon: Building2 },
+  { key: "congtrinh", label: "Công trình", icon: HardHat },
 ];
 
 export default function WarehouseHPConsPage() {
@@ -74,8 +80,11 @@ export default function WarehouseHPConsPage() {
         {tab === "xuat" && <XuatKhoTab khoId={selectedKho} khoList={khoList} />}
         {tab === "chuyen" && <ChuyenKhoTab khoId={selectedKho} khoList={khoList} />}
         {tab === "ton" && <TonKhoTab khoId={selectedKho} />}
-        {tab === "hanghoa" && <HangHoaTab />}
+        {tab === "kiemke" && <KiemKeTab khoId={selectedKho} khoList={khoList} />}
+        {tab === "hanghoa" && <HangHoaTab khoId={selectedKho} khoList={khoList} />}
         {tab === "dskho" && <KhoTab />}
+        {tab === "phongban" && <PhongBanTab />}
+        {tab === "congtrinh" && <CongTrinhTab />}
       </div>
     </div>
   );

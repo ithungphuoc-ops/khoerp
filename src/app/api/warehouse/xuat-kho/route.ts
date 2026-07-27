@@ -65,7 +65,7 @@ async function checkStockBeforeExport(khoId: string | undefined, chiTiet: ChiTie
   if (allowNegative || !khoId) return;
   const insufficient: string[] = [];
   for (const ct of chiTiet) {
-    const hangHoaId = await resolveHangHoaId(ct);
+    const hangHoaId = await resolveHangHoaId(ct, khoId);
     if (!hangHoaId || ct.soLuong <= 0) continue;
     const ton = await checkStock(khoId, hangHoaId);
     if (ton < ct.soLuong) {

@@ -58,12 +58,18 @@ interface ChiTietInput {
   congTrinh?: string;
 }
 
+function hangHoaDocId(khoId: string, maHang: string): string {
+  return `${khoId}_${maHang}`;
+}
+
 /**
- * Tìm hangHoaId (= doc id của warehouse_hang_hoa, tức maHang) từ 1 dòng chi
- * tiết. Ưu tiên: hangHoaId có sẵn → maHang → tenHang → tự tạo mới.
- * Chạy TRƯỚC transaction chính (giống bản gốc build_movements chạy ngoài RPC).
+ * Tìm hangHoaId (= maHang, KHÔNG phải doc id ghép) từ 1 dòng chi tiết, tra
+ * trong đúng danh mục của 1 kho cụ thể (mỗi kho có danh mục hàng hóa độc
+ * lập — xem lib/types/warehouse.ts). Ưu tiên: hangHoaId có sẵn → maHang →
+ * tenHang → tự tạo mới. Chạy TRƯỚC transaction chính (giống bản gốc
+ * build_movements chạy ngoài RPC).
  */
-export async function resolveHangHoaId(ct: ChiTietInput): Promise<string | null> {
+export async function resolveHangHoaId(ct: ChiTietInput, khoId: string): Promise<string | null> {
   if (ct.hangHoaId) return ct.hangHoaId;
 
   const ma = (ct.maHang || "").trim();
@@ -71,21 +77,27 @@ export async function resolveHangHoaId(ct: ChiTietInput): Promise<string | null>
   if (!ma && !ten) return null;
 
   if (ma) {
-    const snap = await adminDb.collection("warehouse_hang_hoa").doc(ma).get();
+    const snap = await adminDb.collection("warehouse_hang_hoa").doc(hangHoaDocId(khoId, ma)).get();
     if (snap.exists) return ma;
   }
 
   if (ten) {
-    const q = await adminDb.collection("warehouse_hang_hoa").where("tenHang", "==", ten).limit(1).get();
-    if (!q.empty) return q.docs[0].id;
+    const q = await adminDb
+      .collection("warehouse_hang_hoa")
+      .where("khoId", "==", khoId)
+      .where("tenHang", "==", ten)
+      .limit(1)
+      .get();
+    if (!q.empty) return (q.docs[0].data() as HangHoa).maHang;
   }
 
-  // Tự tạo hàng hóa mới
+  // Tự tạo hàng hóa mới trong danh mục của kho này
   try {
-    const newId = ma || ten.slice(0, 20);
+    const newMa = ma || ten.slice(0, 20);
     const now = new Date().toISOString();
     const data: HangHoa = {
-      maHang: newId,
+      khoId,
+      maHang: newMa,
       tenHang: ten || ma,
       donViTinh: ct.donViTinh || "",
       giaNhap: Number(ct.donGia) || 0,
@@ -94,11 +106,35 @@ export async function resolveHangHoaId(ct: ChiTietInput): Promise<string | null>
       createdAt: now,
       updatedAt: now,
     };
-    await adminDb.collection("warehouse_hang_hoa").doc(newId).set(data, { merge: true });
-    return newId;
+    await adminDb.collection("warehouse_hang_hoa").doc(hangHoaDocId(khoId, newMa)).set(data, { merge: true });
+    return newMa;
   } catch (e) {
     console.error("[WarehouseEngine] resolveHangHoaId auto-create error:", e);
     return null;
+  }
+}
+
+/**
+ * Đảm bảo kho đích (toKhoId) có bản ghi hàng hóa cho mã hàng này trong danh
+ * mục RIÊNG của nó — nếu chưa có (kho đó lần đầu nhận mã hàng này), tự tạo
+ * bằng cách copy tên/ĐVT/giá từ danh mục của kho nguồn (fromKhoId). Dùng khi
+ * chuyển kho — không được để việc danh mục độc lập giữa các kho chặn luồng
+ * chuyển kho.
+ */
+async function ensureHangHoaInKho(maHang: string, fromKhoId: string, toKhoId: string): Promise<void> {
+  const toRef = adminDb.collection("warehouse_hang_hoa").doc(hangHoaDocId(toKhoId, maHang));
+  const toSnap = await toRef.get();
+  if (toSnap.exists) return;
+
+  const fromSnap = await adminDb.collection("warehouse_hang_hoa").doc(hangHoaDocId(fromKhoId, maHang)).get();
+  const now = new Date().toISOString();
+  if (fromSnap.exists) {
+    const src = fromSnap.data() as HangHoa;
+    await toRef.set({ ...src, khoId: toKhoId, createdAt: now, updatedAt: now } as HangHoa);
+  } else {
+    // Trường hợp hiếm: hangHoaId được truyền thẳng (không qua resolveHangHoaId) và
+    // không có bản ghi nguồn để copy — tạo bản ghi tối thiểu để không chặn chuyển kho.
+    await toRef.set({ khoId: toKhoId, maHang, tenHang: maHang, giaNhap: 0, giaBan: 0, active: true, createdAt: now, updatedAt: now } as HangHoa);
   }
 }
 
@@ -111,7 +147,7 @@ export async function buildMovements(
 ): Promise<StockMovementInput[]> {
   const movements: StockMovementInput[] = [];
   for (const ct of chiTiet) {
-    const hangHoaId = await resolveHangHoaId(ct);
+    const hangHoaId = await resolveHangHoaId(ct, khoId);
     if (!hangHoaId) continue;
     const soLuong = Number(ct.soLuong) || 0;
     if (soLuong <= 0) continue;
@@ -248,11 +284,16 @@ export async function postTransferMovements(params: {
 }): Promise<PostResult> {
   const movements: StockMovementInput[] = [];
   for (const ct of params.chiTiet) {
-    const hangHoaId = await resolveHangHoaId(ct);
+    // Tra theo danh mục kho XUẤT (hàng phải có sẵn ở đó mới chuyển đi được).
+    const hangHoaId = await resolveHangHoaId(ct, params.khoXuatId);
     if (!hangHoaId) continue;
     const soLuong = Number(ct.soLuong) || 0;
     if (soLuong <= 0) continue;
     const donGia = Number(ct.donGia) || 0;
+    // Kho nhận có danh mục hàng hóa RIÊNG — nếu đây là lần đầu kho nhận hàng
+    // này, tự tạo bản ghi tương ứng bên kho nhận (copy từ kho xuất) để danh
+    // mục độc lập giữa các kho không chặn luồng chuyển kho.
+    await ensureHangHoaInKho(hangHoaId, params.khoXuatId, params.khoNhapId);
     movements.push({
       khoId: params.khoXuatId,
       hangHoaId,
@@ -280,6 +321,68 @@ export async function postTransferMovements(params: {
       `postTransferMovements failed [chuyen_kho/${params.refId}]: ${e instanceof Error ? e.message : e}`
     );
   }
+}
+
+/**
+ * post_inventory_adjustment: kiểm kê — ép tồn kho hệ thống về đúng số lượng
+ * đếm thực tế cho từng hàng hóa tại 1 kho. Chỉ ghi ledger cho dòng có chênh
+ * lệch (thực tế ≠ hệ thống); dòng khớp đúng thì bỏ qua, không tạo rác ledger.
+ */
+export async function postInventoryAdjustment(params: {
+  khoId: string;
+  items: { hangHoaId: string; soLuongThucTe: number }[];
+  refId: string;
+  userId?: string | null;
+}): Promise<PostResult> {
+  return adminDb.runTransaction(async (tx) => {
+    const keys = params.items.map((it) => tonKhoDocId(params.khoId, it.hangHoaId));
+    const refs = keys.map((k) => adminDb.collection("warehouse_ton_kho").doc(k));
+    const snaps = await Promise.all(refs.map((r) => tx.get(r)));
+
+    const baseNow = Date.now();
+    const ledgerEntries: WarehouseLedgerEntry[] = [];
+    const results: PostResult["results"] = [];
+
+    params.items.forEach((it, index) => {
+      const stockBefore = snaps[index].exists ? (snaps[index].data() as TonKho).soLuong ?? 0 : 0;
+      const stockAfter = it.soLuongThucTe;
+      results.push({ khoId: params.khoId, hangHoaId: it.hangHoaId, stockBefore, stockAfter });
+      const diff = stockAfter - stockBefore;
+      if (diff === 0) return;
+      ledgerEntries.push({
+        transactionType: "ADJUSTMENT",
+        refType: "kiem_ke",
+        refId: params.refId,
+        khoId: params.khoId,
+        hangHoaId: it.hangHoaId,
+        soLuong: Math.abs(diff),
+        donGia: 0,
+        thanhTien: 0,
+        direction: diff > 0 ? 1 : -1,
+        stockBefore,
+        stockAfter,
+        createdBy: params.userId ?? null,
+        createdAt: new Date(baseNow + index).toISOString(),
+        notes: "Điều chỉnh theo kiểm kê thực tế",
+      });
+    });
+
+    const now = new Date(baseNow).toISOString();
+    params.items.forEach((it, index) => {
+      if (results[index].stockBefore === it.soLuongThucTe) return; // không đổi thì khỏi ghi
+      tx.set(adminDb.collection("warehouse_ton_kho").doc(keys[index]), {
+        khoId: params.khoId,
+        hangHoaId: it.hangHoaId,
+        soLuong: it.soLuongThucTe,
+        updatedAt: now,
+      } as TonKho);
+    });
+    for (const entry of ledgerEntries) {
+      tx.set(adminDb.collection("warehouse_ledger").doc(), entry);
+    }
+
+    return { count: ledgerEntries.length, results };
+  });
 }
 
 /**

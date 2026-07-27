@@ -3,11 +3,24 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Search, RefreshCw, ChevronLeft, ChevronRight, X, Save, Edit2 } from "lucide-react";
 import { api } from "@/lib/apiClient";
-import type { HangHoaRow } from "./types";
+import type { HangHoaRow, KhoRow } from "./types";
 
-function HangHoaModal({ item, onClose, onSaved }: { item: HangHoaRow | null; onClose: () => void; onSaved: () => void }) {
+function HangHoaModal({
+  item,
+  khoId,
+  khoList,
+  onClose,
+  onSaved,
+}: {
+  item: HangHoaRow | null;
+  khoId: string;
+  khoList: KhoRow[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const isEdit = !!item;
   const [form, setForm] = useState({
+    kho_id: item?.khoId || khoId || khoList[0]?.maKho || "",
     ma_hang: item?.maHang || "",
     ten_hang: item?.tenHang || "",
     don_vi_tinh: item?.donViTinh || "",
@@ -24,12 +37,13 @@ function HangHoaModal({ item, onClose, onSaved }: { item: HangHoaRow | null; onC
   }
 
   async function handleSave() {
+    if (!form.kho_id) return setErr("Vui lòng chọn kho");
     if (!form.ma_hang || !form.ten_hang) return setErr("Vui lòng nhập mã hàng và tên hàng");
     setSaving(true);
     setErr(null);
     try {
       if (isEdit) {
-        await api.put(`/warehouse/hang-hoa/${item.maHang}`, form);
+        await api.put(`/warehouse/hang-hoa/${item.id || `${item.khoId}_${item.maHang}`}`, form);
       } else {
         await api.post("/warehouse/hang-hoa", form);
       }
@@ -54,6 +68,17 @@ function HangHoaModal({ item, onClose, onSaved }: { item: HangHoaRow | null; onC
           </button>
         </div>
         <div className="p-5 space-y-3">
+          <div>
+            <label className="text-xs text-hp-text-muted mb-1 block">Kho *</label>
+            <select className="hp-input w-full" value={form.kho_id} onChange={(e) => set("kho_id", e.target.value)} disabled={isEdit}>
+              <option value="">-- Chọn kho --</option>
+              {khoList.map((k) => (
+                <option key={k.maKho} value={k.maKho}>
+                  {k.tenKho}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-hp-text-muted mb-1 block">Mã hàng *</label>
@@ -97,7 +122,7 @@ function HangHoaModal({ item, onClose, onSaved }: { item: HangHoaRow | null; onC
   );
 }
 
-export function HangHoaTab() {
+export function HangHoaTab({ khoId = "", khoList = [] }: { khoId?: string; khoList?: KhoRow[] }) {
   const [items, setItems] = useState<HangHoaRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -106,12 +131,14 @@ export function HangHoaTab() {
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<HangHoaRow | null>(null);
   const limit = 50;
+  const showKhoCol = !khoId;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit), active: "true" });
       if (search) params.set("search", search);
+      if (khoId) params.set("kho_id", khoId);
       const res = await api.get<{ items: HangHoaRow[]; total: number }>(`/warehouse/hang-hoa?${params}`);
       setItems(res.items || []);
       setTotal(res.total || 0);
@@ -120,7 +147,7 @@ export function HangHoaTab() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, search, khoId]);
 
   useEffect(() => {
     load();
@@ -157,8 +184,10 @@ export function HangHoaTab() {
             <tr className="bg-hp-surface text-hp-text-muted text-xs border-b border-hp-border">
               <th className="px-4 py-2.5 text-left">Mã hàng</th>
               <th className="px-4 py-2.5 text-left">Tên hàng</th>
+              {showKhoCol && <th className="px-4 py-2.5 text-left">Kho</th>}
               <th className="px-4 py-2.5 text-left">Nhóm</th>
               <th className="px-4 py-2.5 text-center">ĐVT</th>
+              <th className="px-4 py-2.5 text-right">Tồn kho</th>
               <th className="px-4 py-2.5 text-right">Giá nhập</th>
               <th className="px-4 py-2.5 text-right">Giá bán</th>
               <th className="px-4 py-2.5 text-center w-16">Sửa</th>
@@ -167,23 +196,25 @@ export function HangHoaTab() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center">
+                <td colSpan={showKhoCol ? 8 : 7} className="py-12 text-center">
                   <RefreshCw size={20} className="animate-spin mx-auto text-hp-text-muted" />
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-hp-text-muted text-sm">
-                  Chưa có hàng hóa nào
+                <td colSpan={showKhoCol ? 8 : 7} className="py-12 text-center text-hp-text-muted text-sm">
+                  Chưa có hàng hóa nào{khoId ? " ở kho này" : ""}
                 </td>
               </tr>
             ) : (
               items.map((item) => (
-                <tr key={item.maHang} onClick={() => setEditItem(item)} className="border-t border-hp-border hover:bg-hp-surface/50 cursor-pointer transition-colors">
+                <tr key={item.id || `${item.khoId}_${item.maHang}`} onClick={() => setEditItem(item)} className="border-t border-hp-border hover:bg-hp-surface/50 cursor-pointer transition-colors">
                   <td className="px-4 py-2.5 font-mono text-xs text-hp-primary">{item.maHang}</td>
                   <td className="px-4 py-2.5 text-hp-text">{item.tenHang}</td>
+                  {showKhoCol && <td className="px-4 py-2.5 text-hp-text-muted text-xs">{item.kho?.tenKho || item.khoId || "—"}</td>}
                   <td className="px-4 py-2.5 text-hp-text-muted text-xs">{item.nhomHang || "—"}</td>
                   <td className="px-4 py-2.5 text-center text-hp-text-muted text-xs">{item.donViTinh || "—"}</td>
+                  <td className="px-4 py-2.5 text-right text-hp-text">{item.tonKho ?? 0}</td>
                   <td className="px-4 py-2.5 text-right text-hp-text">{(item.giaNhap || 0).toLocaleString("vi-VN")}</td>
                   <td className="px-4 py-2.5 text-right text-hp-text">{(item.giaBan || 0).toLocaleString("vi-VN")}</td>
                   <td className="px-4 py-2.5 text-center">
@@ -218,6 +249,8 @@ export function HangHoaTab() {
       {showModal && (
         <HangHoaModal
           item={null}
+          khoId={khoId}
+          khoList={khoList}
           onClose={() => setShowModal(false)}
           onSaved={() => {
             setShowModal(false);
@@ -228,6 +261,8 @@ export function HangHoaTab() {
       {editItem && (
         <HangHoaModal
           item={editItem}
+          khoId={khoId}
+          khoList={khoList}
           onClose={() => setEditItem(null)}
           onSaved={() => {
             setEditItem(null);

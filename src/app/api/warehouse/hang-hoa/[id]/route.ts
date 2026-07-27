@@ -10,7 +10,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const { id } = await params;
     const snap = await adminDb.collection("warehouse_hang_hoa").doc(id).get();
     if (!snap.exists) throw new ApiError(404, "Không tìm thấy hàng hóa");
-    return NextResponse.json(snap.data());
+    return NextResponse.json({ id: snap.id, ...snap.data() });
   } catch (e) {
     return handleApiError(e);
   }

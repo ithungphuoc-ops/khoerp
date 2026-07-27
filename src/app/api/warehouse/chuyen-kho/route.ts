@@ -60,7 +60,7 @@ async function checkStockForTransfer(khoXuatId: string | undefined, chiTiet: Chi
   if (!khoXuatId) return;
   const insufficient: string[] = [];
   for (const ct of chiTiet) {
-    const hangHoaId = await resolveHangHoaId(ct);
+    const hangHoaId = await resolveHangHoaId(ct, khoXuatId);
     if (!hangHoaId || ct.soLuong <= 0) continue;
     const ton = await checkStock(khoXuatId, hangHoaId);
     if (ton < ct.soLuong) {

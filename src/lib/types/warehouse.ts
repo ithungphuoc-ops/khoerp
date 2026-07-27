@@ -12,8 +12,40 @@ export interface Kho {
   createdAt: string;
 }
 
-/** Firestore collection "warehouse_hang_hoa" — doc id = maHang. */
+/**
+ * Firestore collection "warehouse_phong_ban" — doc id = ma (vd "KTOAN").
+ * Danh mục dùng chung toàn công ty (không phân theo kho) — để tìm-gõ-là-ra
+ * khi xuất kho cho 1 phòng ban cụ thể.
+ */
+export interface PhongBan {
+  ma: string;
+  ten: string;
+  moTa?: string;
+  active: boolean;
+  createdAt: string;
+}
+
+/**
+ * Firestore collection "warehouse_cong_trinh" — doc id = ma (vd "CT001").
+ * Danh mục dùng chung toàn công ty — để tìm-gõ-là-ra khi xuất kho cho 1
+ * công trình cụ thể.
+ */
+export interface CongTrinh {
+  ma: string;
+  ten: string;
+  diaDiem?: string;
+  moTa?: string;
+  active: boolean;
+  createdAt: string;
+}
+
+/**
+ * Firestore collection "warehouse_hang_hoa" — doc id = `${khoId}_${maHang}`.
+ * Mỗi kho có danh mục hàng hóa hoàn toàn độc lập — cùng 1 mã hàng có thể tồn
+ * tại riêng biệt ở nhiều kho khác nhau (khác doc, có thể khác tên/ĐVT/giá).
+ */
 export interface HangHoa {
+  khoId: string;
   maHang: string;
   tenHang: string;
   donViTinh?: string;
@@ -90,6 +122,43 @@ export interface PhieuXuatKho {
   dinhKem?: string;
   trangThai: TrangThaiPhieu;
   chiTiet: ChiTietPhieuXuat[];
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+  deleteReason?: string | null;
+}
+
+/** Một dòng chi tiết kiểm kê — so sánh tồn kho hệ thống với số đếm thực tế. */
+export interface ChiTietKiemKe {
+  stt: number;
+  hangHoaId: string;
+  maHang: string;
+  tenHang: string;
+  donViTinh?: string;
+  soLuongHeThong: number;
+  soLuongThucTe: number;
+  chenhLech: number;
+  ghiChu?: string;
+}
+
+/**
+ * Firestore collection "warehouse_phieu_kiem_ke" — doc id = soChungTu (vd "KK00001").
+ * Không hỗ trợ Sửa (chỉ Xem chi tiết + Xóa/rollback) — vì "sửa" 1 phiếu kiểm
+ * kê sau khi đã điều chỉnh tồn kho không còn ý nghĩa rõ ràng (tồn hệ thống
+ * ghi nhận lúc tạo phiếu đã đổi ngay sau khi phiếu đó áp dụng); muốn sửa số
+ * liệu thì kiểm kê lại bằng phiếu mới.
+ */
+export interface PhieuKiemKe {
+  soChungTu: string;
+  ngayKiemKe: string;
+  khoId: string;
+  nguoiKiemKe?: string;
+  lyDo?: string;
+  ghiChu?: string;
+  trangThai: TrangThaiPhieu;
+  chiTiet: ChiTietKiemKe[];
   createdBy?: string;
   createdAt: string;
   updatedAt: string;

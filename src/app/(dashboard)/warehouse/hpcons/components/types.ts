@@ -8,6 +8,9 @@ export interface KhoRow {
 }
 
 export interface HangHoaRow {
+  /** Doc id thật trong Firestore (`${khoId}_${maHang}`) — dùng cho URL sửa/xóa. */
+  id?: string;
+  khoId: string;
   maHang: string;
   tenHang: string;
   donViTinh?: string;
@@ -18,8 +21,10 @@ export interface HangHoaRow {
   active: boolean;
   createdAt: string;
   updatedAt: string;
-  /** Chỉ có khi API được gọi kèm kho_id — tồn kho hiện tại của hàng này tại kho đó. */
+  /** Tồn kho hiện tại của hàng này tại đúng kho (khoId) của nó. */
   tonKho?: number;
+  /** Chỉ có khi xem "Tất cả kho" — thông tin kho để hiển thị cột "Kho". */
+  kho?: { maKho: string; tenKho: string } | null;
 }
 
 export interface ChiTietRow {
