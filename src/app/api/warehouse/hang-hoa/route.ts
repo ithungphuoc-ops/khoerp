@@ -2,18 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { requireUser } from "@/lib/server/auth";
 import { handleApiError, ApiError } from "@/lib/server/apiError";
-import type { HangHoa } from "@/lib/types/warehouse";
+import type { HangHoa, TonKho } from "@/lib/types/warehouse";
+
+/** Đọc tồn kho hiện tại (point-read, nhanh) cho danh sách hàng hóa tại 1 kho cụ thể. */
+async function attachTonKho<T extends { maHang: string }>(items: T[], khoId: string): Promise<(T & { tonKho: number })[]> {
+  const snaps = await Promise.all(items.map((h) => adminDb.collection("warehouse_ton_kho").doc(`${khoId}_${h.maHang}`).get()));
+  return items.map((h, i) => ({ ...h, tonKho: snaps[i].exists ? (snaps[i].data() as TonKho).soLuong ?? 0 : 0 }));
+}
 
 export async function GET(req: NextRequest) {
   try {
     await requireUser();
     const sp = req.nextUrl.searchParams;
     const search = sp.get("search")?.toLowerCase().trim() || null;
+    const maHangExact = sp.get("ma_hang") || null;
     const nhomHang = sp.get("nhom_hang") || null;
+    const khoId = sp.get("kho_id") || null;
     const activeParam = sp.get("active");
     const active = activeParam === null ? null : activeParam === "true";
     const page = Math.max(1, Number(sp.get("page") || 1));
     const limit = Math.min(200, Math.max(1, Number(sp.get("limit") || 50)));
+
+    // Tra chính xác 1 mã hàng (dùng để refresh tồn kho khi người dùng đổi kho
+    // sau khi đã chọn hàng — cần đúng chính xác 1 kết quả, không phải tìm gần đúng).
+    if (maHangExact) {
+      const snap = await adminDb.collection("warehouse_hang_hoa").doc(maHangExact).get();
+      if (!snap.exists) return NextResponse.json({ items: [], total: 0, page: 1, limit: 1 });
+      const hh = snap.data() as HangHoa;
+      const items = khoId ? await attachTonKho([hh], khoId) : [hh];
+      return NextResponse.json({ items, total: 1, page: 1, limit: 1 });
+    }
 
     const snap = await adminDb.collection("warehouse_hang_hoa").orderBy("maHang").get();
     let rows = snap.docs.map((d) => d.data() as HangHoa);
@@ -28,7 +46,8 @@ export async function GET(req: NextRequest) {
 
     const total = rows.length;
     const offset = (page - 1) * limit;
-    const items = rows.slice(offset, offset + limit);
+    const pageRows = rows.slice(offset, offset + limit);
+    const items = khoId ? await attachTonKho(pageRows, khoId) : pageRows;
 
     return NextResponse.json({ items, total, page, limit });
   } catch (e) {

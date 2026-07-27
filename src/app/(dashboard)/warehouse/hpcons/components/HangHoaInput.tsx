@@ -16,6 +16,7 @@ export function HangHoaInput({
   readOnly = false,
   placeholder = "",
   className = "",
+  khoId = "",
 }: {
   value?: string;
   field?: "maHang" | "tenHang";
@@ -24,6 +25,8 @@ export function HangHoaInput({
   readOnly?: boolean;
   placeholder?: string;
   className?: string;
+  /** Kho đang thao tác — khi có, dropdown gợi ý hiện kèm tồn kho hiện tại tại kho này. */
+  khoId?: string;
 }) {
   const [text, setText] = useState(value);
   const [suggestions, setSuggs] = useState<HangHoaRow[]>([]);
@@ -45,24 +48,28 @@ export function HangHoaInput({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const search = useCallback(async (q: string) => {
-    if (q.length < 2) {
-      setSuggs([]);
-      setOpen(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await api.get<{ items: HangHoaRow[] }>(`/warehouse/hang-hoa?search=${encodeURIComponent(q)}&limit=10&active=true`);
-      const items = res.items || [];
-      setSuggs(items);
-      setOpen(items.length > 0);
-    } catch {
-      setSuggs([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const search = useCallback(
+    async (q: string) => {
+      if (q.length < 2) {
+        setSuggs([]);
+        setOpen(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const khoParam = khoId ? `&kho_id=${encodeURIComponent(khoId)}` : "";
+        const res = await api.get<{ items: HangHoaRow[] }>(`/warehouse/hang-hoa?search=${encodeURIComponent(q)}&limit=10&active=true${khoParam}`);
+        const items = res.items || [];
+        setSuggs(items);
+        setOpen(items.length > 0);
+      } catch {
+        setSuggs([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [khoId]
+  );
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
@@ -132,7 +139,14 @@ export function HangHoaInput({
                 <span className="font-mono text-xs text-hp-primary shrink-0 w-24 truncate">{hh.maHang}</span>
                 <span className="truncate">{hh.tenHang}</span>
               </div>
-              <span className="text-xs text-hp-text-muted shrink-0">{hh.donViTinh}</span>
+              <span className="flex items-center gap-2 shrink-0">
+                <span className="text-xs text-hp-text-muted">{hh.donViTinh}</span>
+                {khoId && (
+                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${(hh.tonKho ?? 0) > 0 ? "bg-hp-success/15 text-hp-success" : "bg-hp-danger/15 text-hp-danger"}`}>
+                    Tồn: {hh.tonKho ?? 0}
+                  </span>
+                )}
+              </span>
             </div>
           ))}
         </div>

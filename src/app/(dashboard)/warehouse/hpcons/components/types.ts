@@ -18,6 +18,8 @@ export interface HangHoaRow {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Chỉ có khi API được gọi kèm kho_id — tồn kho hiện tại của hàng này tại kho đó. */
+  tonKho?: number;
 }
 
 export interface ChiTietRow {
@@ -33,6 +35,8 @@ export interface ChiTietRow {
   tkCo?: string;
   congTrinh?: string;
   ghiChu?: string;
+  /** Chỉ dùng hiển thị UI (không gửi lên API) — tồn kho hiện tại của hàng này tại kho đang thao tác. */
+  tonKhoHienTai?: number;
 }
 
 export function emptyChiTietRow(stt: number): ChiTietRow {

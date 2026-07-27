@@ -241,7 +241,7 @@ function PhieuModal({ khoList, phieu, onClose, onSaved }: { khoList: KhoRow[]; p
       const rows = [...prev];
       const sl = Number(rows[i].soLuong) || 1;
       const dg = hh.giaNhap || 0;
-      rows[i] = { ...rows[i], hangHoaId: hh.maHang, maHang: hh.maHang, tenHang: hh.tenHang, donViTinh: hh.donViTinh || "", donGia: dg, thanhTien: sl * dg };
+      rows[i] = { ...rows[i], hangHoaId: hh.maHang, maHang: hh.maHang, tenHang: hh.tenHang, donViTinh: hh.donViTinh || "", donGia: dg, thanhTien: sl * dg, tonKhoHienTai: hh.tonKho ?? 0 };
       return rows;
     });
   }
@@ -254,10 +254,41 @@ function PhieuModal({ khoList, phieu, onClose, onSaved }: { khoList: KhoRow[]; p
   }
   const tongSL = chiTiet.reduce((s, r) => s + (r.soLuong || 0), 0);
 
+  // Khi đổi kho xuất sau khi đã chọn hàng — refresh lại tồn kho hiện tại (tồn
+  // kho hiển thị trước đó là của kho xuất cũ, không còn đúng với kho mới).
+  useEffect(() => {
+    if (!form.kho_xuat_id) return;
+    const rowsWithHang = chiTiet.map((r, i) => ({ i, maHang: r.hangHoaId })).filter((r) => r.maHang);
+    if (rowsWithHang.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      for (const { i, maHang } of rowsWithHang) {
+        try {
+          const res = await api.get<{ items: HangHoaRow[] }>(`/warehouse/hang-hoa?ma_hang=${encodeURIComponent(maHang!)}&kho_id=${encodeURIComponent(form.kho_xuat_id)}`);
+          const tonKho = res.items?.[0]?.tonKho ?? 0;
+          if (cancelled) return;
+          setChiTiet((prev) => {
+            const rows = [...prev];
+            if (rows[i]) rows[i] = { ...rows[i], tonKhoHienTai: tonKho };
+            return rows;
+          });
+        } catch {
+          // ignore
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.kho_xuat_id]);
+
   async function handleSave(withPrint = false) {
     if (!form.kho_xuat_id) return showToast("error", "Vui lòng chọn kho xuất");
     if (!form.kho_nhap_id) return showToast("error", "Vui lòng chọn kho nhập");
     if (form.kho_xuat_id === form.kho_nhap_id) return showToast("error", "Kho xuất và kho nhập không được trùng");
+    const overLimit = chiTiet.find((r) => r.tonKhoHienTai !== undefined && r.soLuong > r.tonKhoHienTai);
+    if (overLimit) return showToast("error", `Hàng "${overLimit.tenHang}" chỉ còn tồn ${overLimit.tonKhoHienTai} ở kho xuất — vượt quá số lượng chuyển`);
     setSaving(true);
     setToast(null);
     try {
@@ -356,13 +387,14 @@ function PhieuModal({ khoList, phieu, onClose, onSaved }: { khoList: KhoRow[]; p
                     <tr key={i} className="border-t border-hp-border hover:bg-hp-surface/50">
                       <td className="px-2 py-1 text-hp-text-muted text-xs">{i + 1}</td>
                       <td className="px-2 py-1">
-                        <HangHoaInput value={row.maHang || ""} field="maHang" onChange={(hh) => handleSelectHH(i, hh)} onTextChange={(v) => updateCT(i, "maHang", v)} />
+                        <HangHoaInput value={row.maHang || ""} field="maHang" khoId={form.kho_xuat_id} onChange={(hh) => handleSelectHH(i, hh)} onTextChange={(v) => updateCT(i, "maHang", v)} />
                       </td>
                       <td className="px-2 py-1">
                         <HangHoaInput
                           value={row.tenHang || ""}
                           field="tenHang"
                           placeholder="Tên hàng hóa"
+                          khoId={form.kho_xuat_id}
                           onChange={(hh) => handleSelectHH(i, hh)}
                           onTextChange={(v) => updateCT(i, "tenHang", v)}
                         />
@@ -377,7 +409,18 @@ function PhieuModal({ khoList, phieu, onClose, onSaved }: { khoList: KhoRow[]; p
                         <input className="hp-input w-full py-0.5 text-center" value={row.donViTinh || ""} onChange={(e) => updateCT(i, "donViTinh", e.target.value)} />
                       </td>
                       <td className="px-2 py-1">
-                        <input type="number" className="hp-input w-full py-0.5 text-right" value={row.soLuong} onChange={(e) => updateCT(i, "soLuong", Number(e.target.value))} />
+                        <input
+                          type="number"
+                          className={`hp-input w-full py-0.5 text-right ${row.tonKhoHienTai !== undefined && row.soLuong > row.tonKhoHienTai ? "border-hp-danger text-hp-danger" : ""}`}
+                          value={row.soLuong}
+                          onChange={(e) => updateCT(i, "soLuong", Number(e.target.value))}
+                        />
+                        {row.tonKhoHienTai !== undefined && (
+                          <div className={`text-[10px] text-right mt-0.5 ${row.soLuong > row.tonKhoHienTai ? "text-hp-danger font-medium" : "text-hp-text-muted"}`}>
+                            Tồn: {row.tonKhoHienTai}
+                            {row.soLuong > row.tonKhoHienTai && " — vượt tồn kho!"}
+                          </div>
+                        )}
                       </td>
                       <td className="px-2 py-1">
                         <input type="number" className="hp-input w-full py-0.5 text-right" value={row.donGia} onChange={(e) => updateCT(i, "donGia", Number(e.target.value))} />
