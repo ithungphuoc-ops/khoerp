@@ -22,16 +22,17 @@ khoerp **không tự đăng nhập** — toàn bộ xác thực xảy ra ở n�
   "Chưa được cấp quyền" ngay trong app (không redirect lặp vô hạn).
 
 ⚠️ **Chưa chốt**: `HPCORE_APP_ID` (hằng số trong `src/lib/constants.ts`) hiện đặt tạm
-là `"khoerp"` — cần Sếp xác nhận/đăng ký đúng tên với người quản lý `dashboardApps.ts`
-bên repo `hpcons-portal` trước khi dùng thật, nếu không admin hpcore gán quyền sẽ
-không khớp app này (xem entry "HPC Warehouse" trong `dashboardApps.ts`, đang bỏ trống
-`id`/`href`/`rolesEndpoint`, có thể là dành cho khoerp hoặc cho KhoUNICE — cần làm rõ).
+là `"khoerp"` — Sếp xác nhận entry "HPC Warehouse" trong `dashboardApps.ts` KHÔNG
+liên quan tới khoerp, nghĩa là khoerp vẫn chưa có entry chính thức trong
+`dashboardApps.ts` của `hpcons-portal`. Cần người quản lý `hpcons-portal` tạo entry
+mới cho khoerp (`id` khớp `HPCORE_APP_ID`, `href` = `https://khoerp.hpcore.vn`,
+`rolesEndpoint` = `https://khoerp.hpcore.vn/api/roles`) rồi xác nhận lại giá trị
+`HPCORE_APP_ID` có cần đổi khác `"khoerp"` không.
 
-⚠️ **Việc còn để ngỏ**: Phase 3 (module IAM) của khoerp có sẵn trang "Tài khoản" tự
-tạo user Firebase Auth riêng trong project `hpcons-khoerp` — dưới mô hình HPCore SSO,
-việc tạo tài khoản/gán quyền app nên chuyển hẳn sang giao diện quản trị của hpcore,
-giống cách `KhoUNICE_Web_NEW` đã xóa trang tạo tài khoản nội bộ. Trang "Tài khoản"
-của khoerp **chưa bị xóa** — cần Sếp quyết định giữ lại (chỉ xem/hiển thị) hay bỏ hẳn.
+Trang "Tài khoản" nội bộ (tạo/khóa/reset mật khẩu/đổi vai trò thủ công) đã được
+**xóa** theo quyết định của Sếp — toàn bộ việc đó chuyển hẳn sang giao diện quản trị
+`account.hpcore.vn`. `GET /api/iam/accounts` vẫn còn (chỉ đọc) vì trang Nhóm cần để
+chọn thành viên thêm vào nhóm nội bộ.
 
 ## Chạy dev
 
@@ -115,28 +116,45 @@ npx firebase deploy --only firestore:rules,firestore:indexes --project hpcons-kh
 
 ### 3. Domain `khoerp.hpcore.vn`
 
-1. Vercel project → **Settings → Domains** → thêm `khoerp.hpcore.vn` → Vercel cho biết
-   bản ghi DNS cần tạo (thường là CNAME trỏ về `cname.vercel-dns.com`).
-2. Vào nơi quản lý DNS của domain `hpcore.vn` → tạo bản ghi CNAME đó cho subdomain `khoerp`.
-3. Đợi DNS lan truyền — Vercel tự cấp SSL sau khi domain xác minh xong.
+✅ **Đã xong**: project Vercel `khoerp` đã tồn tại (Git-connected, tự deploy mỗi lần
+push nhánh `main`), domain `khoerp.hpcore.vn` đã được thêm vào project và đã xác
+minh xong — SSL do Let's Encrypt cấp tự động, đã kiểm tra thật:
 
-Trạng thái lúc viết tài liệu này: DNS `khoerp.hpcore.vn` đã trỏ về Vercel (IP
-`76.76.21.21`), nhưng TLS handshake thất bại (chưa có project Vercel nào gắn domain
-này) — nghĩa là **bước 2 (kết nối repo vào Vercel) + bước 3.1 (thêm domain trong Vercel)
-vẫn chưa làm**, dù DNS có vẻ đã sẵn.
+```
+curl https://khoerp.hpcore.vn/api/roles        # 200, JSON danh sách vai trò
+curl https://khoerp.hpcore.vn/                 # 307 -> account.hpcore.vn/login
+curl https://khoerp.hpcore.vn/api/auth/me      # 401 khi chưa đăng nhập
+```
 
-### 4. Đăng ký app với HPCore (bắt buộc để SSO hoạt động)
+Lưu ý trong quá trình deploy thật đã phát sinh và fix 2 lỗi không lộ ra khi chạy
+`next dev` cục bộ (xem lịch sử commit "Phase 12"/"Phase 13" để biết chi tiết):
 
-- Xác nhận `HPCORE_APP_ID` chính thức với người quản lý `hpcons-portal` (xem mục
-  "Đăng nhập qua HPCore SSO" ở trên) và cập nhật hằng số trong `src/lib/constants.ts`
-  nếu khác `"khoerp"`.
-- Người quản lý hpcore cần gắn entry cho khoerp trong `dashboardApps.ts` (`id`, `href`
-  = `https://khoerp.hpcore.vn`, `rolesEndpoint` = `https://khoerp.hpcore.vn/api/roles`).
+1. Project Vercel ban đầu có Framework Preset = "Other" (không phải "Next.js") —
+   khiến build không sinh output đúng, mọi route trả 404. Đã sửa qua Vercel API
+   (`PATCH /v9/projects/{id}` với `framework: "nextjs"`).
+2. `firebase-admin` (qua `jwks-rsa` → `jose`) gây lỗi `ERR_REQUIRE_ESM` trên runtime
+   Node của Vercel (jose từ bản 6.x bỏ hẳn build CommonJS) — mọi route đụng tới
+   Firebase Admin Auth (kể cả `/api/auth/me` khi không có cookie, vì lỗi xảy ra ngay
+   lúc import module) đều trả 500. Đã fix bằng cách ghim `jwks-rsa@3.2.2` (bản dùng
+   `jose@4.x` — vẫn còn build CJS) qua `package.json` "overrides".
+
+### 4. Đăng ký app với HPCore (bắt buộc để SSO hoạt động — CHƯA XONG)
+
+- ⚠️ Người quản lý `hpcons-portal` cần tạo entry mới cho khoerp trong
+  `dashboardApps.ts` (`id` khớp `HPCORE_APP_ID` = `"khoerp"` hiện tại, `href` =
+  `https://khoerp.hpcore.vn`, `rolesEndpoint` = `https://khoerp.hpcore.vn/api/roles`) —
+  xem mục "Chưa chốt" ở phần SSO phía trên.
 - Cấp quyền `app_permissions` cho ít nhất 1 tài khoản (vd `nguyenhuuphuoc@hpcons.com.vn`)
   role `ADMIN` trước khi go-live, nếu không sẽ không ai vào quản trị được khoerp.
 
-### 5. Go-live
+### 5. Firestore rules/indexes cho hpcons-khoerp (CHƯA XONG)
+
+Bước 1 ở trên (`npx firebase login` + `firebase deploy --only firestore:rules,...`)
+cần chạy ở terminal có thể mở trình duyệt để đăng nhập Google — không chạy được từ môi
+trường CI/non-interactive. Sếp chạy 2 lệnh ở mục 1 trên máy của Sếp khi rảnh.
+
+### 6. Go-live
 
 Vì đây là big-bang migration (dữ liệu Supabase hiện tại chỉ là demo, không cần di chuyển
-— xem quyết định ở đầu quá trình chuyển đổi), sau khi xác nhận `khoerp.hpcore.vn` chạy ổn
-định, có thể tắt hệ Python/Supabase cũ.
+— xem quyết định ở đầu quá trình chuyển đổi), sau khi bước 4 và 5 xong, có thể tắt hệ
+Python/Supabase cũ.
