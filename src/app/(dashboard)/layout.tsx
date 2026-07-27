@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/server/auth";
+import { ShieldAlert } from "lucide-react";
+import { getAuthState } from "@/lib/server/auth";
+import { HPCORE_LOGIN_URL } from "@/lib/constants";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 
@@ -8,12 +10,31 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Middleware chỉ kiểm tra cookie có tồn tại hay không (Edge runtime, không
-  // verify được chữ ký). Xác thực thật diễn ra ở đây bằng Admin SDK — nếu
-  // cookie giả/hết hạn/tài khoản bị revoke thì redirect về /login.
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
+  // Middleware chỉ kiểm tra cookie "session" có tồn tại hay không (Edge runtime,
+  // không verify được chữ ký). Xác thực thật + kiểm tra quyền app diễn ra ở đây
+  // bằng Admin SDK của hpcons-portal.
+  const state = await getAuthState();
+
+  if (state.kind === "unauthenticated") {
+    const loginUrl = new URL(HPCORE_LOGIN_URL);
+    loginUrl.searchParams.set("next", `https://khoerp.hpcore.vn`);
+    redirect(loginUrl.toString());
+  }
+
+  if (state.kind === "forbidden") {
+    return (
+      <div className="flex h-screen items-center justify-center" style={{ background: "var(--hp-bg)" }}>
+        <div className="hp-card max-w-sm p-8 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-hp-xl bg-hp-danger/15 border border-hp-danger/30">
+            <ShieldAlert size={26} className="text-hp-danger" />
+          </div>
+          <h1 className="mb-2 text-lg font-semibold text-hp-text">Chưa được cấp quyền</h1>
+          <p className="text-sm text-hp-text-muted">
+            Tài khoản của bạn đã đăng nhập HPCore nhưng chưa được cấp quyền truy cập khoerp. Liên hệ quản trị viên để được cấp quyền.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

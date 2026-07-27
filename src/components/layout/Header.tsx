@@ -103,9 +103,10 @@ export function Header() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
+  // logout() tự điều hướng sang account.hpcore.vn sau khi xóa cookie cục bộ —
+  // không còn trang /login riêng của khoerp để quay về nữa.
   async function handleLogout() {
     await logout();
-    router.replace("/login");
   }
 
   return (

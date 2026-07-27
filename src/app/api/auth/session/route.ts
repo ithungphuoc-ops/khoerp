@@ -1,39 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebase/admin";
-import { createSessionCookie, SESSION_COOKIE_NAME, SESSION_EXPIRES_IN_MS } from "@/lib/server/session";
-import { getOrCreateAppUser, touchLastLogin } from "@/lib/server/auth";
+import { NextResponse } from "next/server";
+import { HPCORE_SESSION_COOKIE } from "@/lib/constants";
 
-export async function POST(req: NextRequest) {
-  const { idToken } = await req.json().catch(() => ({ idToken: null }));
-  if (!idToken || typeof idToken !== "string") {
-    return NextResponse.json({ detail: "Thiếu idToken" }, { status: 400 });
-  }
-
-  let decoded;
-  try {
-    decoded = await adminAuth.verifyIdToken(idToken);
-  } catch {
-    return NextResponse.json({ detail: "Token không hợp lệ hoặc đã hết hạn" }, { status: 401 });
-  }
-
-  const user = await getOrCreateAppUser(decoded.uid, decoded.email ?? "");
-  await touchLastLogin(decoded.uid);
-
-  const sessionCookie = await createSessionCookie(idToken);
-
-  const res = NextResponse.json({ user });
-  res.cookies.set(SESSION_COOKIE_NAME, sessionCookie, {
+/**
+ * khoerp không tự tạo session nữa — đăng nhập xảy ra hoàn toàn ở
+ * account.hpcore.vn (POST /api/auth/session bên đó tạo cookie "session" dùng
+ * chung domain .hpcore.vn). Route này chỉ còn DELETE để đăng xuất: vì cookie
+ * dùng chung domain cha, khoerp tự xóa được ở phía mình mà không cần gọi API
+ * hpcore (giống hệt cách KhoUNICE_Web_NEW đã làm).
+ */
+export async function DELETE() {
+  const res = NextResponse.json({ message: "Đăng xuất thành công" });
+  res.cookies.set(HPCORE_SESSION_COOKIE, "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: SESSION_EXPIRES_IN_MS / 1000,
+    domain: process.env.NODE_ENV === "production" ? ".hpcore.vn" : undefined,
+    maxAge: 0,
   });
-  return res;
-}
-
-export async function DELETE() {
-  const res = NextResponse.json({ message: "Đăng xuất thành công" });
-  res.cookies.delete(SESSION_COOKIE_NAME);
   return res;
 }

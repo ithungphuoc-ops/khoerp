@@ -1,10 +1,12 @@
 "use client";
 
+import { HPCORE_LOGIN_URL } from "@/lib/constants";
+
 /**
  * Client fetch wrapper cho các route /api/** của chính app này. Khác bản gốc
  * (frontend/src/api/index.js): không cần Authorization header/localStorage
- * token — phiên đăng nhập là httpOnly cookie, trình duyệt tự gửi kèm mỗi
- * request cùng-origin.
+ * token — phiên đăng nhập là httpOnly cookie "session" dùng chung domain
+ * .hpcore.vn, trình duyệt tự gửi kèm mỗi request cùng-origin.
  */
 export class ApiRequestError extends Error {
   status: number;
@@ -25,7 +27,7 @@ async function request<T = unknown>(path: string, options: RequestInit = {}): Pr
   const data = await res.json().catch(() => ({}));
 
   if (res.status === 401 && typeof window !== "undefined" && !path.includes("/auth/")) {
-    window.location.href = "/login";
+    window.location.href = HPCORE_LOGIN_URL;
     throw new ApiRequestError(401, "Chưa đăng nhập", data);
   }
   if (!res.ok) {
