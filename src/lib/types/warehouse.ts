@@ -40,6 +40,19 @@ export interface CongTrinh {
 }
 
 /**
+ * Firestore collection "warehouse_tai_khoan" — doc id = ma (vd "152").
+ * Danh mục tài khoản kế toán dùng chung toàn công ty — để tìm-gõ-là-ra ở ô
+ * "TK Nợ"/"TK Có" trong bảng chi tiết Nhập/Xuất/Chuyển kho.
+ */
+export interface TaiKhoanKeToan {
+  ma: string;
+  ten: string;
+  moTa?: string;
+  active: boolean;
+  createdAt: string;
+}
+
+/**
  * Firestore collection "warehouse_hang_hoa" — doc id = `${khoId}_${maHang}`.
  * Mỗi kho có danh mục hàng hóa hoàn toàn độc lập — cùng 1 mã hàng có thể tồn
  * tại riêng biệt ở nhiều kho khác nhau (khác doc, có thể khác tên/ĐVT/giá).

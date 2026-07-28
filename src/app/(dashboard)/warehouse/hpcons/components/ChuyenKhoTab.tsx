@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Search, RefreshCw, Trash2, ChevronLeft, ChevronRight, ArrowRightLeft, X, Save, Printer, Package, Edit2, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { api } from "@/lib/apiClient";
 import { HangHoaInput } from "./HangHoaInput";
+import { EntityAutocomplete } from "./EntityAutocomplete";
 import { emptyChiTietRow, chiTietToBody, type KhoRow, type HangHoaRow, type ChiTietRow } from "./types";
 
 interface PhieuChuyenForm {
@@ -400,10 +401,28 @@ function PhieuModal({ khoList, phieu, onClose, onSaved }: { khoList: KhoRow[]; p
                         />
                       </td>
                       <td className="px-2 py-1">
-                        <input className="hp-input w-full py-0.5 text-center" placeholder="331" value={row.tkNo || ""} onChange={(e) => updateCT(i, "tkNo", e.target.value)} />
+                        <EntityAutocomplete
+                          apiPath="/warehouse/tai-khoan"
+                          selectField="ma"
+                          dropdownMinWidth={220}
+                          className="text-center"
+                          value={row.tkNo || ""}
+                          placeholder="331"
+                          onChange={(acc) => updateCT(i, "tkNo", acc.ma)}
+                          onTextChange={(v) => updateCT(i, "tkNo", v)}
+                        />
                       </td>
                       <td className="px-2 py-1">
-                        <input className="hp-input w-full py-0.5 text-center" placeholder="152" value={row.tkCo || ""} onChange={(e) => updateCT(i, "tkCo", e.target.value)} />
+                        <EntityAutocomplete
+                          apiPath="/warehouse/tai-khoan"
+                          selectField="ma"
+                          dropdownMinWidth={220}
+                          className="text-center"
+                          value={row.tkCo || ""}
+                          placeholder="152"
+                          onChange={(acc) => updateCT(i, "tkCo", acc.ma)}
+                          onTextChange={(v) => updateCT(i, "tkCo", v)}
+                        />
                       </td>
                       <td className="px-2 py-1">
                         <input className="hp-input w-full py-0.5 text-center" value={row.donViTinh || ""} onChange={(e) => updateCT(i, "donViTinh", e.target.value)} />

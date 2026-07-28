@@ -22,6 +22,8 @@ export function EntityAutocomplete({
   onTextChange,
   placeholder = "",
   className = "",
+  selectField = "ten",
+  dropdownMinWidth,
 }: {
   value?: string;
   /** Đường dẫn API danh mục, vd "/warehouse/phong-ban" — phải trả về { items: EntityRow[] }. */
@@ -30,6 +32,10 @@ export function EntityAutocomplete({
   onTextChange?: (text: string) => void;
   placeholder?: string;
   className?: string;
+  /** Field điền vào ô input SAU KHI chọn — mặc định "ten" (Phòng ban/Công trình). Dùng "ma" cho danh mục mã ngắn (vd Tài khoản kế toán: 152, 331...). */
+  selectField?: "ma" | "ten";
+  /** Chiều rộng tối thiểu của dropdown gợi ý (px) — dùng khi ô input hẹp (vd cột TK Nợ/Có) để tên đầy đủ không bị cắt cụt. */
+  dropdownMinWidth?: number;
 }) {
   const [text, setText] = useState(value);
   const [suggestions, setSuggs] = useState<EntityRow[]>([]);
@@ -83,7 +89,7 @@ export function EntityAutocomplete({
   }
 
   function handleSelect(row: EntityRow) {
-    setText(row.ten);
+    setText(row[selectField] as string);
     setSuggs([]);
     setOpen(false);
     onChange?.(row);
@@ -124,7 +130,10 @@ export function EntityAutocomplete({
       )}
 
       {open && suggestions.length > 0 && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-hp-bg border border-hp-border rounded-hp-md shadow-xl max-h-52 overflow-auto">
+        <div
+          className={`absolute z-50 top-full left-0 mt-1 bg-hp-bg border border-hp-border rounded-hp-md shadow-xl max-h-52 overflow-auto ${dropdownMinWidth ? "" : "right-0"}`}
+          style={dropdownMinWidth ? { minWidth: dropdownMinWidth } : undefined}
+        >
           {suggestions.map((row, i) => (
             <div
               key={row.ma}
