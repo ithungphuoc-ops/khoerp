@@ -47,7 +47,7 @@
       "fields": [
         { "fieldPath": "khoId", "order": "ASCENDING" },
         { "fieldPath": "hangHoaId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
     },
     {
