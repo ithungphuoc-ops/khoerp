@@ -7,6 +7,16 @@ import { HangHoaInput } from "./HangHoaInput";
 import { PhieuDetailModal } from "./PhieuDetailModal";
 import type { KhoRow } from "./types";
 
+/** Mặc định bộ lọc ngày: đầu tháng hiện tại -> hôm nay — Sếp chỉ cần đổi khi muốn xem khoảng khác. */
+function dauThang(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+}
+function homNay(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
 interface NhapXuatTonRow {
   maHang: string;
   tenHang: string;
@@ -141,8 +151,8 @@ function MiniSoChiTietModal({
 
 function NhapXuatTonReport({ khoList, defaultKhoId }: { khoList: KhoRow[]; defaultKhoId: string }) {
   const [khoId, setKhoId] = useState(defaultKhoId || khoList[0]?.maKho || "");
-  const [tuNgay, setTuNgay] = useState("");
-  const [denNgay, setDenNgay] = useState("");
+  const [tuNgay, setTuNgay] = useState(dauThang());
+  const [denNgay, setDenNgay] = useState(homNay());
   const [rows, setRows] = useState<NhapXuatTonRow[] | null>(null);
   const [appliedFilter, setAppliedFilter] = useState<{ khoId: string; tuNgay: string; denNgay: string } | null>(null);
   const [drillDown, setDrillDown] = useState<{ maHang: string; tenHang: string } | null>(null);
@@ -288,8 +298,8 @@ interface DonViGroup {
 function XuatTheoDonViReport({ khoList, defaultKhoId }: { khoList: KhoRow[]; defaultKhoId: string }) {
   const [loai, setLoai] = useState<"phong_ban" | "cong_trinh">("phong_ban");
   const [khoId, setKhoId] = useState(defaultKhoId);
-  const [tuNgay, setTuNgay] = useState("");
-  const [denNgay, setDenNgay] = useState("");
+  const [tuNgay, setTuNgay] = useState(dauThang());
+  const [denNgay, setDenNgay] = useState(homNay());
   const [groups, setGroups] = useState<DonViGroup[] | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -420,8 +430,8 @@ function SoChiTietReport({ khoList, defaultKhoId }: { khoList: KhoRow[]; default
   const [khoId, setKhoId] = useState(defaultKhoId || khoList[0]?.maKho || "");
   const [maHang, setMaHang] = useState("");
   const [tenHang, setTenHang] = useState("");
-  const [tuNgay, setTuNgay] = useState("");
-  const [denNgay, setDenNgay] = useState("");
+  const [tuNgay, setTuNgay] = useState(dauThang());
+  const [denNgay, setDenNgay] = useState(homNay());
   const [rows, setRows] = useState<LedgerRow[] | null>(null);
   const [detail, setDetail] = useState<{ refType: string; refId: string } | null>(null);
   const [loading, setLoading] = useState(false);

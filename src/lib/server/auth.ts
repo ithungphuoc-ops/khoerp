@@ -21,43 +21,59 @@ export interface CurrentUser {
   roleColor: string;
 }
 
-async function resolveRoleById(roleId?: string | null): Promise<{ role: string; roleColor: string }> {
-  if (!roleId) return { role: DEFAULT_ROLE_NAME, roleColor: DEFAULT_ROLE_COLOR };
-  const snap = await adminDb.collection("roles").doc(roleId).get();
-  if (!snap.exists) return { role: DEFAULT_ROLE_NAME, roleColor: DEFAULT_ROLE_COLOR };
-  const data = snap.data() as Role;
-  return { role: data.tenRole || DEFAULT_ROLE_NAME, roleColor: data.color || DEFAULT_ROLE_COLOR };
+/**
+ * Tìm role khoerp khớp với tên role hpcore đã cấp (vd "KHO_TRUONG") — hpcore
+ * chỉ biết TÊN role (lấy từ GET /api/roles của chính khoerp), còn ma trận
+ * quyền chi tiết theo từng module vẫn do khoerp tự quản lý. Trả nguyên cả
+ * doc (không chỉ id) để khỏi phải đọc lại lần 2 lấy màu — trước đây tách
+ * riêng findRoleIdByName() + resolveRoleById() nghĩa là 2 lượt đọc Firestore
+ * cho cùng 1 thông tin, gộp lại còn 1 lượt.
+ */
+async function findRoleByName(tenRole: string): Promise<{ id: string; tenRole: string; color: string } | null> {
+  const snap = await adminDb.collection("roles").where("tenRole", "==", tenRole).limit(1).get();
+  if (snap.empty) return null;
+  const data = snap.docs[0].data() as Role;
+  return { id: snap.docs[0].id, tenRole: data.tenRole || DEFAULT_ROLE_NAME, color: data.color || DEFAULT_ROLE_COLOR };
 }
 
-/** Tìm roleId khoerp khớp với tên role hpcore đã cấp (vd "KHO_TRUONG") — hpcore chỉ
- * biết TÊN role (lấy từ GET /api/roles của chính khoerp), còn ma trận quyền chi
- * tiết theo từng module vẫn do khoerp tự quản lý (roles/{roleId}/permissions). */
-async function findRoleIdByName(tenRole: string): Promise<string | null> {
-  const snap = await adminDb.collection("roles").where("tenRole", "==", tenRole).limit(1).get();
-  return snap.empty ? null : snap.docs[0].id;
-}
+const LAST_LOGIN_WRITE_THROTTLE_MS = 5 * 60 * 1000;
 
 /**
  * Đồng bộ profile Firestore nội bộ (users/{uid}) từ session + vai trò hpcore.
  * hpcore là nguồn xác thực danh tính + vai trò cấp app; khoerp chỉ lưu thêm các
  * field đặc thù của mình (họ tên, chức vụ, phòng ban...) và roleId để tra ma
  * trận quyền chi tiết đã xây ở Phase 3.
+ *
+ * Hàm này chạy trong requireUser() — tức MỌI route API đều đi qua đây, nên
+ * mỗi round-trip Firestore thừa ở đây làm chậm TOÀN BỘ app mỗi lần chuyển
+ * tab/thao tác. Tối ưu 2 chỗ so với bản trước:
+ *  1) Đọc profile (ref.get) và tra role (findRoleByName) chạy SONG SONG thay
+ *     vì tuần tự — 2 việc này không phụ thuộc nhau.
+ *  2) Chỉ GHI lastLogin nếu đã cũ hơn 5 phút (trước đây ghi Firestore vô
+ *     điều kiện ở MỌI request, tốn nhất trong toàn bộ chuỗi này).
  */
 async function syncAppUser(session: HpcoreSession, hpcoreRole: string): Promise<CurrentUser> {
   const { uid, email } = session;
   const ref = adminDb.collection("users").doc(uid);
-  const snap = await ref.get();
-  const roleId = (await findRoleIdByName(hpcoreRole)) ?? null;
   const now = new Date().toISOString();
+
+  const [snap, roleMatch] = await Promise.all([ref.get(), findRoleByName(hpcoreRole)]);
+  const roleId = roleMatch?.id ?? null;
+  const role = roleMatch?.tenRole ?? DEFAULT_ROLE_NAME;
+  const roleColor = roleMatch?.color ?? DEFAULT_ROLE_COLOR;
 
   if (snap.exists) {
     const data = snap.data() as AppUser;
-    if (data.roleId !== roleId || data.lastLogin === undefined) {
-      await ref.set({ roleId, lastLogin: now, updatedAt: now }, { merge: true });
-    } else {
-      await ref.set({ lastLogin: now }, { merge: true });
+    const roleChanged = data.roleId !== roleId;
+    const lastLoginStale = !data.lastLogin || Date.now() - new Date(data.lastLogin).getTime() > LAST_LOGIN_WRITE_THROTTLE_MS;
+    if (roleChanged || lastLoginStale) {
+      const update: Record<string, unknown> = { lastLogin: now };
+      if (roleChanged) {
+        update.roleId = roleId;
+        update.updatedAt = now;
+      }
+      await ref.set(update, { merge: true });
     }
-    const { role, roleColor } = await resolveRoleById(roleId);
     return {
       id: uid,
       email: data.email || email,
@@ -84,7 +100,6 @@ async function syncAppUser(session: HpcoreSession, hpcoreRole: string): Promise<
   };
   await ref.set(newUser, { merge: true });
 
-  const { role, roleColor } = await resolveRoleById(roleId);
   return {
     id: uid,
     email,
