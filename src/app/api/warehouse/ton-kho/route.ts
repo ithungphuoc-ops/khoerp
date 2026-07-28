@@ -21,8 +21,11 @@ export async function GET(req: NextRequest) {
     const snap = await query.orderBy("updatedAt", "desc").get();
     const rows = snap.docs.map((d) => d.data() as TonKho);
 
-    const hangHoaIds = [...new Set(rows.map((r) => r.hangHoaId))];
-    const hangHoaDocs = await Promise.all(hangHoaIds.map((id) => adminDb.collection("warehouse_hang_hoa").doc(id).get()));
+    // Hàng hóa giờ theo từng kho (doc id = `${khoId}_${hangHoaId}`, xem Phase 20) —
+    // phải ghép đúng khoId của TỪNG dòng ton_kho, không được tra bằng hangHoaId
+    // đơn thuần (lỗi cũ khiến mã hàng/tên hàng/ĐVT hiện trống khi lọc theo kho).
+    const hangHoaKeys = [...new Set(rows.map((r) => `${r.khoId}_${r.hangHoaId}`))];
+    const hangHoaDocs = await Promise.all(hangHoaKeys.map((key) => adminDb.collection("warehouse_hang_hoa").doc(key).get()));
     const hangHoaMap = new Map(hangHoaDocs.filter((d) => d.exists).map((d) => [d.id, d.data() as HangHoa]));
 
     const khoIds = [...new Set(rows.map((r) => r.khoId))];
@@ -31,7 +34,7 @@ export async function GET(req: NextRequest) {
 
     let items = rows.map((r) => ({
       ...r,
-      hangHoa: hangHoaMap.get(r.hangHoaId) ?? null,
+      hangHoa: hangHoaMap.get(`${r.khoId}_${r.hangHoaId}`) ?? null,
       kho: khoMap.get(r.khoId) ?? null,
     }));
 
