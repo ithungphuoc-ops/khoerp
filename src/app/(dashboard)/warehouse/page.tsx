@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Building2, HardHat, ArrowRight, type LucideIcon } from "lucide-react";
+import { Building2, ArrowRight, type LucideIcon } from "lucide-react";
 
 interface CardDef {
   route: string;
@@ -22,15 +22,6 @@ const CARDS: CardDef[] = [
     label: "Kho Tổng HPCons",
     desc: "Quản lý kho trung tâm toàn công ty — vật tư, thiết bị, VPP, TSCĐ...",
     items: ["Nhập mua", "Xuất cấp phòng ban", "Xuất cấp công trình", "Điều chuyển", "Kiểm kê"],
-  },
-  {
-    route: "/warehouse/projects",
-    icon: HardHat,
-    color: "#6366f1",
-    bg: "rgba(99,102,241,0.1)",
-    label: "Kho Công trình",
-    desc: "Quản lý kho riêng cho từng công trình — nhập, xuất, tồn, báo cáo, AI đọc PDF.",
-    items: ["Danh sách công trình", "Nhập kho", "Xuất kho", "Tồn kho", "AI Reader"],
   },
 ];
 

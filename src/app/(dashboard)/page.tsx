@@ -12,7 +12,6 @@ import {
   Bell,
   ArrowRight,
   Building2,
-  HardHat,
   Zap,
   type LucideIcon,
 } from "lucide-react";
@@ -45,12 +44,11 @@ const MODULE_CARDS: ModuleCardDef[] = [
     icon: Warehouse,
     color: "#2dd4bf",
     bg: "rgba(45,212,191,0.1)",
-    desc: "Kho Tổng & Kho Công trình",
+    desc: "Kho Tổng HPCons",
     route: "/warehouse",
     active: true,
     sub: [
       { label: "Kho Tổng HPCons", icon: Building2, route: "/warehouse/hpcons" },
-      { label: "Kho Công trình", icon: HardHat, route: "/warehouse/projects" },
     ],
   },
   {

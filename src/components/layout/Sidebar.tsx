@@ -76,7 +76,6 @@ const MENU: MenuItem[] = [
     route: "/warehouse",
     children: [
       { code: "warehouse_total", label: "Kho Tổng HPCons", icon: "Building2", route: "/warehouse/hpcons" },
-      { code: "warehouse_projects", label: "Kho Công trình", icon: "HardHat", route: "/warehouse/projects" },
     ],
   },
   {
