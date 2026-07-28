@@ -51,6 +51,22 @@
       ]
     },
     {
+      "collectionGroup": "warehouse_ledger",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "khoId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "warehouse_ton_kho",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "khoId", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "warehouse_audit_log",
       "queryScope": "COLLECTION",
       "fields": [

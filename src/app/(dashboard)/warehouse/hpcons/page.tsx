@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Package, ArrowDownToLine, ArrowUpFromLine, BarChart2, Box, ArrowRightLeft, Warehouse, Building2, HardHat, ClipboardCheck, Landmark, type LucideIcon } from "lucide-react";
+import { Package, ArrowDownToLine, ArrowUpFromLine, BarChart2, Box, ArrowRightLeft, Warehouse, Building2, HardHat, ClipboardCheck, Landmark, FileBarChart, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/apiClient";
 import { NhapKhoTab } from "./components/NhapKhoTab";
 import { XuatKhoTab } from "./components/XuatKhoTab";
@@ -13,6 +13,7 @@ import { PhongBanTab } from "./components/PhongBanTab";
 import { CongTrinhTab } from "./components/CongTrinhTab";
 import { KiemKeTab } from "./components/KiemKeTab";
 import { TaiKhoanTab } from "./components/TaiKhoanTab";
+import { BaoCaoTab } from "./components/BaoCaoTab";
 import type { KhoRow } from "./components/types";
 
 const TABS: { key: string; label: string; icon: LucideIcon }[] = [
@@ -21,6 +22,7 @@ const TABS: { key: string; label: string; icon: LucideIcon }[] = [
   { key: "chuyen", label: "Chuyển kho", icon: ArrowRightLeft },
   { key: "ton", label: "Tồn kho", icon: BarChart2 },
   { key: "kiemke", label: "Kiểm kê", icon: ClipboardCheck },
+  { key: "baocao", label: "Báo cáo", icon: FileBarChart },
   { key: "hanghoa", label: "Hàng hóa", icon: Box },
   { key: "dskho", label: "Danh sách kho", icon: Warehouse },
   { key: "phongban", label: "Phòng ban", icon: Building2 },
@@ -83,6 +85,7 @@ export default function WarehouseHPConsPage() {
         {tab === "chuyen" && <ChuyenKhoTab khoId={selectedKho} khoList={khoList} />}
         {tab === "ton" && <TonKhoTab khoId={selectedKho} />}
         {tab === "kiemke" && <KiemKeTab khoId={selectedKho} khoList={khoList} />}
+        {tab === "baocao" && <BaoCaoTab khoId={selectedKho} khoList={khoList} />}
         {tab === "hanghoa" && <HangHoaTab khoId={selectedKho} khoList={khoList} />}
         {tab === "dskho" && <KhoTab />}
         {tab === "phongban" && <PhongBanTab />}
