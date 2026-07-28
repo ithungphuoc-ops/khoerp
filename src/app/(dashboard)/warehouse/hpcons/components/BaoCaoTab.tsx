@@ -1,9 +1,10 @@
 "use client";
 
-import { Fragment, useState } from "react";
-import { Search, RefreshCw, BarChart3, Users2, BookOpen } from "lucide-react";
+import { Fragment, useEffect, useState } from "react";
+import { Search, RefreshCw, BarChart3, Users2, BookOpen, X } from "lucide-react";
 import { api } from "@/lib/apiClient";
 import { HangHoaInput } from "./HangHoaInput";
+import { PhieuDetailModal } from "./PhieuDetailModal";
 import type { KhoRow } from "./types";
 
 interface NhapXuatTonRow {
@@ -13,8 +14,129 @@ interface NhapXuatTonRow {
   tonDauKy: number;
   tongNhap: number;
   tongXuat: number;
+  chuyenDen: number;
+  chuyenDi: number;
   dieuChinhKiemKe: number;
   tonCuoiKy: number;
+}
+
+interface LedgerRow {
+  transactionType: string;
+  refType: string;
+  refId: string;
+  soLuong: number;
+  direction: 1 | -1;
+  stockAfter: number;
+  createdAt: string;
+}
+
+const LOAI_GIAO_DICH_LABEL: Record<string, { label: string; color: string }> = {
+  IMPORT: { label: "Nhập kho", color: "text-hp-success" },
+  EXPORT: { label: "Xuất kho", color: "text-hp-danger" },
+  TRANSFER_IN: { label: "Chuyển đến", color: "text-hp-success" },
+  TRANSFER_OUT: { label: "Chuyển đi", color: "text-hp-danger" },
+  ADJUSTMENT: { label: "Kiểm kê", color: "text-hp-warning" },
+  REVERSAL: { label: "Hủy/Hoàn tác", color: "text-hp-text-muted" },
+};
+
+/** Popup thu nhỏ — danh sách các phiếu đã cộng vào 1 dòng của báo cáo Nhập-Xuất-Tồn (double-click 1 dòng trong đó để xem hẳn phiếu gốc). */
+function MiniSoChiTietModal({
+  khoId,
+  maHang,
+  tenHang,
+  tuNgay,
+  denNgay,
+  onClose,
+}: {
+  khoId: string;
+  maHang: string;
+  tenHang: string;
+  tuNgay: string;
+  denNgay: string;
+  onClose: () => void;
+}) {
+  const [rows, setRows] = useState<LedgerRow[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState<{ refType: string; refId: string } | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    const params = new URLSearchParams({ kho_id: khoId, ma_hang: maHang });
+    if (tuNgay) params.set("tu_ngay", tuNgay);
+    if (denNgay) params.set("den_ngay", denNgay);
+    api
+      .get<{ items: LedgerRow[] }>(`/warehouse/bao-cao/so-chi-tiet?${params}`)
+      .then((res) => setRows(res.items || []))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  }, [khoId, maHang, tuNgay, denNgay]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="bg-hp-bg border border-hp-border rounded-hp-lg w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-hp-border">
+          <span className="font-semibold text-hp-text">Các phiếu liên quan — {tenHang}</span>
+          <button onClick={onClose} className="hp-btn-ghost p-1">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto p-4">
+          {loading ? (
+            <div className="flex items-center justify-center h-32">
+              <RefreshCw size={18} className="animate-spin text-hp-text-muted" />
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-hp-surface text-hp-text-muted text-xs">
+                  <th className="px-3 py-2 text-left w-28">Ngày</th>
+                  <th className="px-3 py-2 text-left w-28">Loại</th>
+                  <th className="px-3 py-2 text-left">Số chứng từ</th>
+                  <th className="px-3 py-2 text-right w-20">Nhập</th>
+                  <th className="px-3 py-2 text-right w-20">Xuất</th>
+                  <th className="px-3 py-2 text-right w-24">Tồn sau</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!rows || rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-hp-text-muted text-sm">
+                      Không có phiếu nào trong khoảng lọc
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((r, i) => {
+                    const info = LOAI_GIAO_DICH_LABEL[r.transactionType] || { label: r.transactionType, color: "text-hp-text-muted" };
+                    return (
+                      <tr
+                        key={i}
+                        onDoubleClick={() => setDetail({ refType: r.refType, refId: r.refId })}
+                        className="border-t border-hp-border hover:bg-hp-surface/50 cursor-pointer"
+                        title="Double-click để xem chi tiết phiếu"
+                      >
+                        <td className="px-3 py-2 text-hp-text-muted text-xs">{new Date(r.createdAt).toLocaleDateString("vi-VN")}</td>
+                        <td className={`px-3 py-2 text-xs font-medium ${info.color}`}>{info.label}</td>
+                        <td className="px-3 py-2 text-hp-primary font-mono text-xs">{r.refId}</td>
+                        <td className="px-3 py-2 text-right text-hp-success">{r.direction === 1 ? `+${r.soLuong}` : ""}</td>
+                        <td className="px-3 py-2 text-right text-hp-danger">{r.direction === -1 ? `-${r.soLuong}` : ""}</td>
+                        <td className="px-3 py-2 text-right font-medium text-hp-text">{r.stockAfter}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div className="px-5 py-3 border-t border-hp-border flex justify-end">
+          <button onClick={onClose} className="hp-btn-secondary">
+            Đóng
+          </button>
+        </div>
+      </div>
+      {detail && <PhieuDetailModal refType={detail.refType} refId={detail.refId} onClose={() => setDetail(null)} />}
+    </div>
+  );
 }
 
 function NhapXuatTonReport({ khoList, defaultKhoId }: { khoList: KhoRow[]; defaultKhoId: string }) {
@@ -22,6 +144,8 @@ function NhapXuatTonReport({ khoList, defaultKhoId }: { khoList: KhoRow[]; defau
   const [tuNgay, setTuNgay] = useState("");
   const [denNgay, setDenNgay] = useState("");
   const [rows, setRows] = useState<NhapXuatTonRow[] | null>(null);
+  const [appliedFilter, setAppliedFilter] = useState<{ khoId: string; tuNgay: string; denNgay: string } | null>(null);
+  const [drillDown, setDrillDown] = useState<{ maHang: string; tenHang: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -35,6 +159,7 @@ function NhapXuatTonReport({ khoList, defaultKhoId }: { khoList: KhoRow[]; defau
       if (denNgay) params.set("den_ngay", denNgay);
       const res = await api.get<{ items: NhapXuatTonRow[] }>(`/warehouse/bao-cao/nhap-xuat-ton?${params}`);
       setRows(res.items || []);
+      setAppliedFilter({ khoId, tuNgay, denNgay });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Lỗi tải báo cáo");
     } finally {
@@ -79,29 +204,38 @@ function NhapXuatTonReport({ khoList, defaultKhoId }: { khoList: KhoRow[]; defau
                 <th className="px-3 py-2 text-left w-24">Mã hàng</th>
                 <th className="px-3 py-2 text-left">Tên hàng</th>
                 <th className="px-3 py-2 text-center w-16">ĐVT</th>
-                <th className="px-3 py-2 text-right w-24">Tồn đầu kỳ</th>
-                <th className="px-3 py-2 text-right w-24">Tổng nhập</th>
-                <th className="px-3 py-2 text-right w-24">Tổng xuất</th>
-                <th className="px-3 py-2 text-right w-24">Điều chỉnh KK</th>
-                <th className="px-3 py-2 text-right w-24">Tồn cuối kỳ</th>
+                <th className="px-3 py-2 text-right w-20">Tồn đầu kỳ</th>
+                <th className="px-3 py-2 text-right w-20">Nhập kho</th>
+                <th className="px-3 py-2 text-right w-20">Xuất kho</th>
+                <th className="px-3 py-2 text-right w-20">Chuyển đến</th>
+                <th className="px-3 py-2 text-right w-20">Chuyển đi</th>
+                <th className="px-3 py-2 text-right w-20">Điều chỉnh KK</th>
+                <th className="px-3 py-2 text-right w-20">Tồn cuối kỳ</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-10 text-center text-hp-text-muted text-sm">
+                  <td colSpan={10} className="py-10 text-center text-hp-text-muted text-sm">
                     Kho này chưa có hàng hóa nào
                   </td>
                 </tr>
               ) : (
                 rows.map((r) => (
-                  <tr key={r.maHang} className="border-t border-hp-border">
+                  <tr
+                    key={r.maHang}
+                    onDoubleClick={() => setDrillDown({ maHang: r.maHang, tenHang: r.tenHang })}
+                    className="border-t border-hp-border hover:bg-hp-surface/50 cursor-pointer"
+                    title="Double-click để xem các phiếu liên quan"
+                  >
                     <td className="px-3 py-2 font-mono text-xs text-hp-primary">{r.maHang}</td>
                     <td className="px-3 py-2 text-hp-text">{r.tenHang}</td>
                     <td className="px-3 py-2 text-center text-hp-text-muted text-xs">{r.donViTinh || "—"}</td>
                     <td className="px-3 py-2 text-right text-hp-text-muted">{r.tonDauKy}</td>
                     <td className="px-3 py-2 text-right text-hp-success">{r.tongNhap > 0 ? `+${r.tongNhap}` : 0}</td>
                     <td className="px-3 py-2 text-right text-hp-danger">{r.tongXuat > 0 ? `-${r.tongXuat}` : 0}</td>
+                    <td className="px-3 py-2 text-right text-hp-success">{r.chuyenDen > 0 ? `+${r.chuyenDen}` : 0}</td>
+                    <td className="px-3 py-2 text-right text-hp-danger">{r.chuyenDi > 0 ? `-${r.chuyenDi}` : 0}</td>
                     <td className={`px-3 py-2 text-right ${r.dieuChinhKiemKe > 0 ? "text-hp-success" : r.dieuChinhKiemKe < 0 ? "text-hp-danger" : "text-hp-text-muted"}`}>
                       {r.dieuChinhKiemKe > 0 ? `+${r.dieuChinhKiemKe}` : r.dieuChinhKiemKe}
                     </td>
@@ -112,6 +246,17 @@ function NhapXuatTonReport({ khoList, defaultKhoId }: { khoList: KhoRow[]; defau
             </tbody>
           </table>
         </div>
+      )}
+
+      {drillDown && appliedFilter && (
+        <MiniSoChiTietModal
+          khoId={appliedFilter.khoId}
+          maHang={drillDown.maHang}
+          tenHang={drillDown.tenHang}
+          tuNgay={appliedFilter.tuNgay}
+          denNgay={appliedFilter.denNgay}
+          onClose={() => setDrillDown(null)}
+        />
       )}
     </div>
   );
@@ -271,24 +416,6 @@ function XuatTheoDonViReport({ khoList, defaultKhoId }: { khoList: KhoRow[]; def
   );
 }
 
-const LOAI_GIAO_DICH_LABEL: Record<string, { label: string; color: string }> = {
-  IMPORT: { label: "Nhập kho", color: "text-hp-success" },
-  EXPORT: { label: "Xuất kho", color: "text-hp-danger" },
-  TRANSFER_IN: { label: "Chuyển đến", color: "text-hp-success" },
-  TRANSFER_OUT: { label: "Chuyển đi", color: "text-hp-danger" },
-  ADJUSTMENT: { label: "Kiểm kê", color: "text-hp-warning" },
-  REVERSAL: { label: "Hủy/Hoàn tác", color: "text-hp-text-muted" },
-};
-
-interface LedgerRow {
-  transactionType: string;
-  refId: string;
-  soLuong: number;
-  direction: 1 | -1;
-  stockAfter: number;
-  createdAt: string;
-}
-
 function SoChiTietReport({ khoList, defaultKhoId }: { khoList: KhoRow[]; defaultKhoId: string }) {
   const [khoId, setKhoId] = useState(defaultKhoId || khoList[0]?.maKho || "");
   const [maHang, setMaHang] = useState("");
@@ -296,6 +423,7 @@ function SoChiTietReport({ khoList, defaultKhoId }: { khoList: KhoRow[]; default
   const [tuNgay, setTuNgay] = useState("");
   const [denNgay, setDenNgay] = useState("");
   const [rows, setRows] = useState<LedgerRow[] | null>(null);
+  const [detail, setDetail] = useState<{ refType: string; refId: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -392,7 +520,12 @@ function SoChiTietReport({ khoList, defaultKhoId }: { khoList: KhoRow[]; default
                 rows.map((r, i) => {
                   const info = LOAI_GIAO_DICH_LABEL[r.transactionType] || { label: r.transactionType, color: "text-hp-text-muted" };
                   return (
-                    <tr key={i} className="border-t border-hp-border">
+                    <tr
+                      key={i}
+                      onDoubleClick={() => setDetail({ refType: r.refType, refId: r.refId })}
+                      className="border-t border-hp-border hover:bg-hp-surface/50 cursor-pointer"
+                      title="Double-click để xem chi tiết phiếu"
+                    >
                       <td className="px-3 py-2 text-hp-text-muted text-xs">{new Date(r.createdAt).toLocaleDateString("vi-VN")}</td>
                       <td className={`px-3 py-2 text-xs font-medium ${info.color}`}>{info.label}</td>
                       <td className="px-3 py-2 text-hp-primary font-mono text-xs">{r.refId}</td>
@@ -407,6 +540,8 @@ function SoChiTietReport({ khoList, defaultKhoId }: { khoList: KhoRow[]; default
           </table>
         </div>
       )}
+
+      {detail && <PhieuDetailModal refType={detail.refType} refId={detail.refId} onClose={() => setDetail(null)} />}
     </div>
   );
 }
