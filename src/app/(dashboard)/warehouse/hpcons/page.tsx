@@ -50,14 +50,18 @@ export default function WarehouseHPConsPage() {
             <Package size={18} className="text-hp-primary" />
             <h1 className="text-base font-semibold text-hp-text">Kho Tổng HPCons</h1>
           </div>
-          <select className="hp-input w-44 text-sm" value={selectedKho} onChange={(e) => setSelectedKho(e.target.value)}>
-            <option value="">Tất cả kho</option>
-            {khoList.map((k) => (
-              <option key={k.maKho} value={k.maKho}>
-                {k.tenKho}
-              </option>
-            ))}
-          </select>
+          {/* Báo cáo có ô chọn kho RIÊNG cho từng loại báo cáo (bắt buộc chọn, không
+              phải bộ lọc danh sách) — hiện thêm ô này ở đây sẽ trùng lặp, gây rối. */}
+          {tab !== "baocao" && (
+            <select className="hp-input w-44 text-sm" value={selectedKho} onChange={(e) => setSelectedKho(e.target.value)}>
+              <option value="">Tất cả kho</option>
+              {khoList.map((k) => (
+                <option key={k.maKho} value={k.maKho}>
+                  {k.tenKho}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <div className="flex gap-1">
           {TABS.map((t) => {
