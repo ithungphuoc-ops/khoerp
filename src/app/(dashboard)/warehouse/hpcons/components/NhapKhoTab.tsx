@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Search, RefreshCw, Trash2, ChevronLeft, ChevronRight, ArrowDownToLine, X, Save, Printer, Package, Edit2, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { api } from "@/lib/apiClient";
 import { HangHoaInput } from "./HangHoaInput";
-import { EntityAutocomplete } from "./EntityAutocomplete";
+import { EntityAutocomplete } from "@/components/EntityAutocomplete";
 import { emptyChiTietRow, chiTietToBody, type KhoRow, type HangHoaRow, type ChiTietRow } from "./types";
 
 interface PhieuNhapForm {
