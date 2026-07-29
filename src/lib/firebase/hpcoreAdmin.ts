@@ -65,3 +65,17 @@ export async function getHpcoreAppRole(uid: string): Promise<string | null> {
   const role = snap.data()?.[HPCORE_APP_ID];
   return typeof role === "string" && role ? role : null;
 }
+
+/**
+ * Đọc vai trò CẤP NỀN TẢNG (không phải theo từng app) từ `users/{uid}.role`
+ * trong Firestore của hpcons-portal — vd "owner". Dùng để chặn toàn bộ
+ * khoerp về đúng 1 tài khoản owner trong giai đoạn phát triển, bất kể
+ * `app_permissions` đã cấp quyền gì cho người khác.
+ */
+export async function getHpcorePlatformRole(uid: string): Promise<string | null> {
+  const db = getFirestore(getHpcoreApp());
+  const snap = await db.collection("users").doc(uid).get();
+  if (!snap.exists) return null;
+  const role = snap.data()?.role;
+  return typeof role === "string" && role ? role : null;
+}

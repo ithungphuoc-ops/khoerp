@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, Hammer } from "lucide-react";
 import { getAuthState } from "@/lib/server/auth";
 import { HPCORE_LOGIN_URL } from "@/lib/constants";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -19,6 +19,20 @@ export default async function DashboardLayout({
     const loginUrl = new URL(HPCORE_LOGIN_URL);
     loginUrl.searchParams.set("next", `https://khoerp.hpcore.vn`);
     redirect(loginUrl.toString());
+  }
+
+  if (state.kind === "developing") {
+    return (
+      <div className="flex h-screen items-center justify-center" style={{ background: "var(--hp-bg)" }}>
+        <div className="hp-card max-w-sm p-8 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-hp-xl bg-hp-primary/15 border border-hp-primary/30">
+            <Hammer size={26} className="text-hp-primary" />
+          </div>
+          <h1 className="mb-2 text-lg font-semibold text-hp-text">Đang phát triển</h1>
+          <p className="text-sm text-hp-text-muted">Kho Tổng HPCons (khoerp) đang trong quá trình xây dựng. Vui lòng quay lại sau.</p>
+        </div>
+      </div>
+    );
   }
 
   if (state.kind === "forbidden") {

@@ -1,7 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { adminDb } from "@/lib/firebase/admin";
-import { verifyHpcoreSession, getHpcoreAppRole, type HpcoreSession } from "@/lib/firebase/hpcoreAdmin";
+import { verifyHpcoreSession, getHpcoreAppRole, getHpcorePlatformRole, type HpcoreSession } from "@/lib/firebase/hpcoreAdmin";
 import { HPCORE_SESSION_COOKIE } from "@/lib/constants";
 import { ApiError } from "@/lib/server/apiError";
 import type { AppUser, Role } from "@/lib/types/system";
@@ -122,41 +122,33 @@ export async function getHpcoreSession(): Promise<HpcoreSession | null> {
 export type AuthState =
   | { kind: "unauthenticated" }
   | { kind: "forbidden" }
+  | { kind: "developing" }
   | { kind: "ok"; user: CurrentUser };
+
+/** Vai trò cấp nền tảng HPCore (`users/{uid}.role` ở hpcons-portal) được phép vào khoerp trong giai đoạn phát triển. */
+const PLATFORM_ROLES_DUOC_VAO = new Set(["owner"]);
 
 /**
  * Xác thực đầy đủ: verify cookie hpcore + đọc app_permissions + đồng bộ profile.
- * Phân biệt rõ 2 trường hợp thất bại (giống bản Python tham chiếu):
+ * Phân biệt rõ các trường hợp thất bại:
  *   - "unauthenticated": chưa đăng nhập hpcore → cần redirect account.hpcore.vn/login
- *   - "forbidden": đã đăng nhập hpcore nhưng chưa được cấp quyền app này → hiện
- *     thông báo tại chỗ, KHÔNG redirect (tránh vòng lặp vô hạn).
+ *   - "developing": đã đăng nhập hpcore hợp lệ nhưng KHÔNG phải tài khoản owner —
+ *     khoerp đang trong giai đoạn phát triển, chỉ owner được vào xem/dùng thử;
+ *     mọi tài khoản khác (kể cả đã có app_permissions.khoerp) đều bị chặn, hiện
+ *     màn hình "Đang phát triển" thay vì vào được app.
+ *   - "forbidden": (dự phòng, hiện không kích hoạt vì đã chặn sớm hơn ở bước
+ *     "developing") đã đăng nhập nhưng chưa được cấp quyền app này.
  */
-/**
- * ⚠️ TẠM THỜI (theo yêu cầu Sếp, giai đoạn test nội bộ trước khi go-live thật):
- * bỏ chặn "forbidden" — ai đăng nhập được HPCore cũng vào test khoerp được
- * luôn, không cần chờ cấp app_permissions riêng. Mặc định coi như ADMIN để
- * test đầy đủ mọi thao tác (tạo kho, nhập/xuất/chuyển...). Việc cấp quyền
- * theo từng người sẽ làm lại sau khi test xong.
- *
- * Để BẬT LẠI chặn theo quyền: xóa biến này và dòng `role = TEMP_OPEN_ROLE`
- * bên dưới, để nguyên `if (!role) return { kind: "forbidden" };` như cũ.
- */
-const TEMP_OPEN_ACCESS = true;
-const TEMP_OPEN_ROLE = "ADMIN";
-
 export async function getAuthState(): Promise<AuthState> {
   const session = await getHpcoreSession();
   if (!session) return { kind: "unauthenticated" };
 
-  let role = await getHpcoreAppRole(session.uid);
-  if (!role) {
-    if (TEMP_OPEN_ACCESS) {
-      role = TEMP_OPEN_ROLE;
-    } else {
-      return { kind: "forbidden" };
-    }
+  const platformRole = await getHpcorePlatformRole(session.uid);
+  if (!platformRole || !PLATFORM_ROLES_DUOC_VAO.has(platformRole)) {
+    return { kind: "developing" };
   }
 
+  const role = (await getHpcoreAppRole(session.uid)) || "ADMIN";
   const user = await syncAppUser(session, role);
   return { kind: "ok", user };
 }
@@ -167,10 +159,11 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   return state.kind === "ok" ? state.user : null;
 }
 
-/** Dùng trong route handler: throw ApiError(401) nếu chưa đăng nhập hpcore, 403 nếu chưa được cấp quyền app này. */
+/** Dùng trong route handler: throw ApiError(401) nếu chưa đăng nhập hpcore, 403 nếu chưa được cấp quyền/app đang phát triển. */
 export async function requireUser(): Promise<CurrentUser> {
   const state = await getAuthState();
   if (state.kind === "unauthenticated") throw new ApiError(401, "Chưa đăng nhập");
+  if (state.kind === "developing") throw new ApiError(403, "Ứng dụng đang trong quá trình phát triển, vui lòng quay lại sau.");
   if (state.kind === "forbidden") throw new ApiError(403, "Chưa được cấp quyền truy cập khoerp. Liên hệ quản trị viên.");
   return state.user;
 }
