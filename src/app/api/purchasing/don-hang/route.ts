@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/server/auth";
 import { handleApiError, ApiError } from "@/lib/server/apiError";
 import { generateSoChungTu } from "@/lib/server/soChungTu";
 import { getKhoDisplay } from "@/lib/server/khoLookup";
-import type { DonMuaHang, ChiTietDonMuaHang, TrangThaiDonMuaHang } from "@/lib/types/purchasing";
+import type { DonMuaHang, ChiTietDonMuaHang, TrangThaiDonMuaHang, CongNoTinhTu } from "@/lib/types/purchasing";
 
 /** Trạng thái người dùng được phép chọn tay khi tạo/sửa đơn — "nhan_mot_phan"/"nhan_du" chỉ do Phiếu Nhận hàng (Phần D) tự set. */
 const TRANG_THAI_THU_CONG = new Set<TrangThaiDonMuaHang>(["nhap", "da_gui_ncc", "da_xac_nhan", "huy"]);
@@ -28,6 +28,10 @@ interface DonHangCreateBody {
   ngay_giao_du_kien?: string;
   trang_thai?: TrangThaiDonMuaHang;
   chiet_khau_phan_tram?: number;
+  cong_no_ngay?: number;
+  cong_no_tinh_tu?: CongNoTinhTu;
+  ngay_hoa_don?: string;
+  ngay_giao_hang_thuc_te?: string;
   ghi_chu?: string;
   chi_tiet?: ChiTietCreateBody[];
 }
@@ -135,6 +139,10 @@ export async function POST(req: NextRequest) {
         tienChietKhau,
         tongTienThue,
         tongTienThanhToan,
+        congNoNgay: body.cong_no_ngay !== undefined ? Number(body.cong_no_ngay) || undefined : undefined,
+        congNoTinhTu: body.cong_no_tinh_tu,
+        ngayHoaDon: body.ngay_hoa_don,
+        ngayGiaoHangThucTe: body.ngay_giao_hang_thuc_te,
         ghiChu: body.ghi_chu,
         createdBy: user.id,
         createdAt: now,

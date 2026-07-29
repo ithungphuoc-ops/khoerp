@@ -12,7 +12,7 @@ import { BaoCaoTab } from "./components/BaoCaoTab";
 const TABS: { key: string; label: string; icon: LucideIcon }[] = [
   { key: "donhang", label: "Đơn mua hàng", icon: FileText },
   { key: "nhanhang", label: "Nhận hàng", icon: PackageCheck },
-  { key: "thanhtoan", label: "Thanh toán", icon: Wallet },
+  { key: "thanhtoan", label: "Theo dõi công nợ", icon: Wallet },
   { key: "baocao", label: "Báo cáo", icon: BarChart3 },
   { key: "ncc", label: "Nhà cung cấp", icon: Truck },
   { key: "hanghoa", label: "Hàng hóa/Dịch vụ", icon: Package },

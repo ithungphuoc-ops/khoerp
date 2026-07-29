@@ -39,6 +39,8 @@ export interface NhaCungCap {
 
 export type TrangThaiDonMuaHang = "nhap" | "da_gui_ncc" | "da_xac_nhan" | "nhan_mot_phan" | "nhan_du" | "huy";
 
+export type CongNoTinhTu = "ngay_hoa_don" | "ngay_giao_hang";
+
 export interface ChiTietDonMuaHang {
   stt: number;
   maHang?: string;
@@ -80,6 +82,18 @@ export interface DonMuaHang {
   tienChietKhau: number;
   tongTienThue: number;
   tongTienThanhToan: number;
+  /**
+   * Công nợ theo TỪNG đơn (khác nhau tùy thương lượng với NCC) — nếu để
+   * trống, dùng `NhaCungCap.soNgayDuocNo` làm mặc định khi tính hạn thanh
+   * toán. `ngayHoaDon`/`ngayGiaoHangThucTe` đều NHẬP TAY (không tự lấy từ
+   * Phiếu Nhận hàng) vì có NCC xuất hóa đơn ngay lúc giao, có NCC xuất trễ —
+   * `congNoTinhTu` chọn dùng ngày nào làm mốc. Xem tính hạn thanh toán ở
+   * `/api/purchasing/cong-no`.
+   */
+  congNoNgay?: number;
+  congNoTinhTu?: CongNoTinhTu;
+  ngayHoaDon?: string;
+  ngayGiaoHangThucTe?: string;
   ghiChu?: string;
   createdBy?: string;
   createdAt: string;

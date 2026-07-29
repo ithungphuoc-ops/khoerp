@@ -3,7 +3,7 @@ import { adminDb } from "@/lib/firebase/admin";
 import { requireUser } from "@/lib/server/auth";
 import { handleApiError, ApiError } from "@/lib/server/apiError";
 import { getKhoDisplay } from "@/lib/server/khoLookup";
-import type { DonMuaHang, ChiTietDonMuaHang, TrangThaiDonMuaHang } from "@/lib/types/purchasing";
+import type { DonMuaHang, ChiTietDonMuaHang, TrangThaiDonMuaHang, CongNoTinhTu } from "@/lib/types/purchasing";
 
 const TRANG_THAI_THU_CONG = new Set<TrangThaiDonMuaHang>(["nhap", "da_gui_ncc", "da_xac_nhan", "huy"]);
 
@@ -26,6 +26,10 @@ interface DonHangUpdateBody {
   ngay_giao_du_kien?: string;
   trang_thai?: TrangThaiDonMuaHang;
   chiet_khau_phan_tram?: number;
+  cong_no_ngay?: number;
+  cong_no_tinh_tu?: CongNoTinhTu;
+  ngay_hoa_don?: string;
+  ngay_giao_hang_thuc_te?: string;
   ghi_chu?: string;
   chi_tiet?: ChiTietUpdateBody[];
 }
@@ -100,6 +104,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (body.ngay_dat_hang !== undefined) data.ngayDatHang = body.ngay_dat_hang;
     if (body.ngay_giao_du_kien !== undefined) data.ngayGiaoDuKien = body.ngay_giao_du_kien;
     if (body.trang_thai !== undefined) data.trangThai = body.trang_thai;
+    if (body.cong_no_ngay !== undefined) data.congNoNgay = Number(body.cong_no_ngay) || undefined;
+    if (body.cong_no_tinh_tu !== undefined) data.congNoTinhTu = body.cong_no_tinh_tu;
+    if (body.ngay_hoa_don !== undefined) data.ngayHoaDon = body.ngay_hoa_don;
+    if (body.ngay_giao_hang_thuc_te !== undefined) data.ngayGiaoHangThucTe = body.ngay_giao_hang_thuc_te;
     if (body.ghi_chu !== undefined) data.ghiChu = body.ghi_chu;
 
     if (body.chi_tiet || body.chiet_khau_phan_tram !== undefined) {

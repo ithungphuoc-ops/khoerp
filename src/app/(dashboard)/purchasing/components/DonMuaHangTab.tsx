@@ -5,7 +5,9 @@ import { Plus, Search, RefreshCw, Trash2, ChevronLeft, ChevronRight, ShoppingCar
 import { api } from "@/lib/apiClient";
 import { EntityAutocomplete } from "@/components/EntityAutocomplete";
 import { HangHoaMuaHangInput } from "./HangHoaMuaHangInput";
-import type { HangHoaMuaHang, TrangThaiDonMuaHang } from "@/lib/types/purchasing";
+import type { HangHoaMuaHang, TrangThaiDonMuaHang, CongNoTinhTu } from "@/lib/types/purchasing";
+
+const CONG_NO_TINH_TU_LABEL: Record<CongNoTinhTu, string> = { ngay_hoa_don: "Ngày hóa đơn", ngay_giao_hang: "Ngày giao hàng" };
 
 interface KhoRow {
   maKho: string;
@@ -55,6 +57,10 @@ interface DonHangDetail {
   tienChietKhau: number;
   tongTienThue: number;
   tongTienThanhToan: number;
+  congNoNgay?: number;
+  congNoTinhTu?: CongNoTinhTu;
+  ngayHoaDon?: string;
+  ngayGiaoHangThucTe?: string;
   ghiChu?: string;
   kho: KhoRow | null;
 }
@@ -85,6 +91,10 @@ interface DonHangForm {
   ngay_giao_du_kien: string;
   trang_thai: TrangThaiDonMuaHang;
   chiet_khau_phan_tram: number;
+  cong_no_ngay: number | "";
+  cong_no_tinh_tu: CongNoTinhTu;
+  ngay_hoa_don: string;
+  ngay_giao_hang_thuc_te: string;
   ghi_chu: string;
 }
 
@@ -111,6 +121,10 @@ function DonHangModal({ khoList, don, onClose, onSaved }: { khoList: KhoRow[]; d
           ngay_giao_du_kien: don.ngayGiaoDuKien?.slice(0, 10) || "",
           trang_thai: don.trangThai,
           chiet_khau_phan_tram: don.chietKhauPhanTram || 0,
+          cong_no_ngay: don.congNoNgay ?? "",
+          cong_no_tinh_tu: don.congNoTinhTu || "ngay_giao_hang",
+          ngay_hoa_don: don.ngayHoaDon?.slice(0, 10) || "",
+          ngay_giao_hang_thuc_te: don.ngayGiaoHangThucTe?.slice(0, 10) || "",
           ghi_chu: don.ghiChu || "",
         }
       : {
@@ -123,6 +137,10 @@ function DonHangModal({ khoList, don, onClose, onSaved }: { khoList: KhoRow[]; d
           ngay_giao_du_kien: "",
           trang_thai: "nhap",
           chiet_khau_phan_tram: 0,
+          cong_no_ngay: "",
+          cong_no_tinh_tu: "ngay_giao_hang",
+          ngay_hoa_don: "",
+          ngay_giao_hang_thuc_te: "",
           ghi_chu: "",
         }
   );
@@ -179,6 +197,10 @@ function DonHangModal({ khoList, don, onClose, onSaved }: { khoList: KhoRow[]; d
         ngay_giao_du_kien: form.ngay_giao_du_kien || undefined,
         trang_thai: form.trang_thai,
         chiet_khau_phan_tram: Number(form.chiet_khau_phan_tram) || 0,
+        cong_no_ngay: form.cong_no_ngay === "" ? undefined : Number(form.cong_no_ngay),
+        cong_no_tinh_tu: form.cong_no_tinh_tu,
+        ngay_hoa_don: form.ngay_hoa_don || undefined,
+        ngay_giao_hang_thuc_te: form.ngay_giao_hang_thuc_te || undefined,
         ghi_chu: form.ghi_chu || undefined,
         chi_tiet: daNhanMotPhan
           ? undefined
@@ -234,6 +256,7 @@ function DonHangModal({ khoList, don, onClose, onSaved }: { khoList: KhoRow[]; d
                 onChange={(row) => {
                   set("ma_ncc", row.ma);
                   set("ten_ncc", row.ten);
+                  if (!isEdit && typeof row.soNgayDuocNo === "number") set("cong_no_ngay", row.soNgayDuocNo);
                 }}
                 onTextChange={(v) => set("ten_ncc", v)}
               />
@@ -287,6 +310,34 @@ function DonHangModal({ khoList, don, onClose, onSaved }: { khoList: KhoRow[]; d
                 className="hp-input w-full"
                 value={form.chiet_khau_phan_tram}
                 onChange={(e) => set("chiet_khau_phan_tram", Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-hp-text-muted mb-1 block">Ngày xuất hóa đơn</label>
+              <input type="date" className="hp-input w-full" value={form.ngay_hoa_don} onChange={(e) => set("ngay_hoa_don", e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-hp-text-muted mb-1 block">Ngày giao hàng thực tế</label>
+              <input type="date" className="hp-input w-full" value={form.ngay_giao_hang_thuc_te} onChange={(e) => set("ngay_giao_hang_thuc_te", e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-hp-text-muted mb-1 block">Công nợ tính từ</label>
+              <select className="hp-input w-full" value={form.cong_no_tinh_tu} onChange={(e) => set("cong_no_tinh_tu", e.target.value as CongNoTinhTu)}>
+                {Object.entries(CONG_NO_TINH_TU_LABEL).map(([k, label]) => (
+                  <option key={k} value={k}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-hp-text-muted mb-1 block">Công nợ (ngày)</label>
+              <input
+                type="number"
+                className="hp-input w-full"
+                placeholder="Mặc định theo NCC"
+                value={form.cong_no_ngay}
+                onChange={(e) => set("cong_no_ngay", e.target.value === "" ? "" : Number(e.target.value))}
               />
             </div>
           </div>
@@ -484,6 +535,10 @@ function DetailPanel({ don, onClose, onEdit, onDelete }: { don: DonHangDetail; o
             { label: "Công trình", value: don.congTrinh || "—" },
             { label: "Ngày đặt hàng", value: don.ngayDatHang ? new Date(don.ngayDatHang).toLocaleDateString("vi-VN") : "—" },
             { label: "Ngày giao dự kiến", value: don.ngayGiaoDuKien ? new Date(don.ngayGiaoDuKien).toLocaleDateString("vi-VN") : "—" },
+            { label: "Ngày xuất hóa đơn", value: don.ngayHoaDon ? new Date(don.ngayHoaDon).toLocaleDateString("vi-VN") : "—" },
+            { label: "Ngày giao hàng thực tế", value: don.ngayGiaoHangThucTe ? new Date(don.ngayGiaoHangThucTe).toLocaleDateString("vi-VN") : "—" },
+            { label: "Công nợ tính từ", value: don.congNoTinhTu ? CONG_NO_TINH_TU_LABEL[don.congNoTinhTu] : "—" },
+            { label: "Công nợ (ngày)", value: don.congNoNgay !== undefined ? `${don.congNoNgay} ngày` : "Theo NCC" },
           ].map(({ label, value }) => (
             <div key={label} className="bg-hp-surface rounded-hp-md p-3">
               <p className="text-xs text-hp-text-muted mb-0.5">{label}</p>

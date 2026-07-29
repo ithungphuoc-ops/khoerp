@@ -1,12 +1,39 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, RefreshCw, Trash2, X, Save, Wallet, AlertTriangle } from "lucide-react";
+import { Plus, RefreshCw, Trash2, X, Save, Wallet, AlertTriangle, Clock, History } from "lucide-react";
 import { api } from "@/lib/apiClient";
 import { EntityAutocomplete } from "@/components/EntityAutocomplete";
-import type { HinhThucThanhToan } from "@/lib/types/purchasing";
+import type { HinhThucThanhToan, CongNoTinhTu } from "@/lib/types/purchasing";
 
 const HINH_THUC_LABEL: Record<HinhThucThanhToan, string> = { tien_mat: "Tiền mặt", chuyen_khoan: "Chuyển khoản" };
+const CONG_NO_TINH_TU_LABEL: Record<CongNoTinhTu, string> = { ngay_hoa_don: "Ngày hóa đơn", ngay_giao_hang: "Ngày giao hàng" };
+
+type TrangThaiCongNoDon = "da_thanh_toan" | "chua_xac_dinh" | "chua_toi_han" | "qua_han";
+
+const TRANG_THAI_CONG_NO_LABEL: Record<TrangThaiCongNoDon, { label: string; className: string }> = {
+  da_thanh_toan: { label: "Đã thanh toán", className: "bg-hp-success/15 text-hp-success" },
+  chua_xac_dinh: { label: "Chưa xác định", className: "bg-hp-text-muted/15 text-hp-text-muted" },
+  chua_toi_han: { label: "Chưa tới hạn", className: "bg-hp-warning/15 text-hp-warning" },
+  qua_han: { label: "Quá hạn", className: "bg-hp-danger/15 text-hp-danger" },
+};
+
+interface CongNoDonRow {
+  soChungTu: string;
+  maNCC: string;
+  tenNCC: string;
+  tongTienThanhToan: number;
+  daThanhToanChoDon: number;
+  conNoDon: number;
+  congNoNgay: number | null;
+  congNoTinhTu: CongNoTinhTu;
+  ngayCoSo: string | null;
+  hanThanhToan: string | null;
+  soNgayConLai: number | null;
+  trangThai: TrangThaiCongNoDon;
+}
+
+const UU_TIEN_SAP_XEP: Record<TrangThaiCongNoDon, number> = { qua_han: 0, chua_toi_han: 1, chua_xac_dinh: 2, da_thanh_toan: 3 };
 
 interface DonHangSearchRow {
   soChungTu: string;
@@ -90,13 +117,21 @@ function DonHangByNCCSelect({ maNCC, value, onSelect }: { maNCC: string; value: 
   );
 }
 
-function ThanhToanModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+function ThanhToanModal({
+  prefill,
+  onClose,
+  onSaved,
+}: {
+  prefill?: { maNCC: string; tenNCC: string; donMuaHangId?: string; soTien?: number };
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
-    ma_ncc: "",
-    ten_ncc: "",
-    don_mua_hang_id: "",
-    so_tien: 0,
+    ma_ncc: prefill?.maNCC || "",
+    ten_ncc: prefill?.tenNCC || "",
+    don_mua_hang_id: prefill?.donMuaHangId || "",
+    so_tien: prefill?.soTien || 0,
     ngay_thanh_toan: today,
     hinh_thuc: "chuyen_khoan" as HinhThucThanhToan,
     ghi_chu: "",
@@ -199,7 +234,141 @@ function ThanhToanModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
   );
 }
 
-export function ThanhToanTab() {
+const LOC_TRANG_THAI: { key: "tat_ca" | TrangThaiCongNoDon; label: string }[] = [
+  { key: "tat_ca", label: "Tất cả" },
+  { key: "qua_han", label: "Quá hạn" },
+  { key: "chua_toi_han", label: "Chưa tới hạn" },
+  { key: "chua_xac_dinh", label: "Chưa xác định" },
+  { key: "da_thanh_toan", label: "Đã thanh toán" },
+];
+
+function TheoDoiCongNoView() {
+  const [rows, setRows] = useState<CongNoDonRow[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [locTrangThai, setLocTrangThai] = useState<"tat_ca" | TrangThaiCongNoDon>("tat_ca");
+  const [thanhToanCho, setThanhToanCho] = useState<CongNoDonRow | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.get<{ theoDon: CongNoDonRow[] }>("/purchasing/cong-no");
+      const sorted = (res.theoDon || []).sort((a, b) => {
+        const diff = UU_TIEN_SAP_XEP[a.trangThai] - UU_TIEN_SAP_XEP[b.trangThai];
+        if (diff !== 0) return diff;
+        return (a.soNgayConLai ?? 999) - (b.soNgayConLai ?? 999);
+      });
+      setRows(sorted);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const filtered = (rows || []).filter((r) => locTrangThai === "tat_ca" || r.trangThai === locTrangThai);
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="flex items-center gap-2 flex-wrap">
+        <p className="text-xs text-hp-text-muted flex-1">Tự động liệt kê tất cả đơn mua hàng (chưa Hủy) kèm hạn thanh toán tính từ ngày hóa đơn/ngày giao hàng đã nhập trên đơn.</p>
+        <select className="hp-input text-sm" value={locTrangThai} onChange={(e) => setLocTrangThai(e.target.value as typeof locTrangThai)}>
+          {LOC_TRANG_THAI.map((t) => (
+            <option key={t.key} value={t.key}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+        <button onClick={load} className="hp-btn-ghost">
+          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+        </button>
+      </div>
+
+      <div className="border border-hp-border rounded-hp-md overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-hp-surface text-hp-text-muted text-xs">
+              <th className="px-3 py-2 text-left">Số đơn</th>
+              <th className="px-3 py-2 text-left">Nhà cung cấp</th>
+              <th className="px-3 py-2 text-right w-28">Giá trị</th>
+              <th className="px-3 py-2 text-right w-20">Công nợ</th>
+              <th className="px-3 py-2 text-left w-32">Ngày cơ sở</th>
+              <th className="px-3 py-2 text-left w-28">Hạn thanh toán</th>
+              <th className="px-3 py-2 text-right w-24">Còn/Quá hạn</th>
+              <th className="px-3 py-2 text-right w-28">Còn nợ</th>
+              <th className="px-3 py-2 text-left w-28">Trạng thái</th>
+              <th className="px-3 py-2 text-center w-24">Thanh toán</th>
+            </tr>
+          </thead>
+          <tbody>
+            {!rows ? (
+              <tr>
+                <td colSpan={10} className="py-10 text-center">
+                  <RefreshCw size={18} className="animate-spin mx-auto text-hp-text-muted" />
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={10} className="py-10 text-center text-hp-text-muted text-sm">
+                  Không có đơn nào khớp bộ lọc
+                </td>
+              </tr>
+            ) : (
+              filtered.map((r) => {
+                const info = TRANG_THAI_CONG_NO_LABEL[r.trangThai];
+                return (
+                  <tr key={r.soChungTu} className="border-t border-hp-border hover:bg-hp-surface/50">
+                    <td className="px-3 py-2 font-medium text-hp-primary">{r.soChungTu}</td>
+                    <td className="px-3 py-2 text-hp-text">{r.tenNCC}</td>
+                    <td className="px-3 py-2 text-right text-hp-text-muted">{r.tongTienThanhToan.toLocaleString("vi-VN")}</td>
+                    <td className="px-3 py-2 text-right text-hp-text-muted">{r.congNoNgay !== null ? `${r.congNoNgay} ngày` : "—"}</td>
+                    <td className="px-3 py-2 text-hp-text-muted text-xs">
+                      {r.ngayCoSo ? `${new Date(r.ngayCoSo).toLocaleDateString("vi-VN")} (${CONG_NO_TINH_TU_LABEL[r.congNoTinhTu]})` : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-hp-text-muted text-xs">{r.hanThanhToan ? new Date(r.hanThanhToan).toLocaleDateString("vi-VN") : "—"}</td>
+                    <td className={`px-3 py-2 text-right font-medium ${r.soNgayConLai !== null && r.soNgayConLai < 0 ? "text-hp-danger" : "text-hp-text-muted"}`}>
+                      {r.soNgayConLai === null ? "—" : r.soNgayConLai < 0 ? `Quá ${-r.soNgayConLai} ngày` : `Còn ${r.soNgayConLai} ngày`}
+                    </td>
+                    <td className={`px-3 py-2 text-right font-medium ${r.conNoDon > 0 ? "text-hp-danger" : "text-hp-text-muted"}`}>{r.conNoDon.toLocaleString("vi-VN")}</td>
+                    <td className="px-3 py-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${info.className}`}>{info.label}</span>
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {r.conNoDon > 0 && (
+                        <button
+                          onClick={() => setThanhToanCho(r)}
+                          className="hp-btn-ghost text-xs px-2 py-1 gap-1 text-hp-primary"
+                        >
+                          <Wallet size={12} /> Trả
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {thanhToanCho && (
+        <ThanhToanModal
+          prefill={{ maNCC: thanhToanCho.maNCC, tenNCC: thanhToanCho.tenNCC, donMuaHangId: thanhToanCho.soChungTu, soTien: thanhToanCho.conNoDon }}
+          onClose={() => setThanhToanCho(null)}
+          onSaved={() => {
+            setThanhToanCho(null);
+            load();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function LichSuThanhToanView() {
   const [items, setItems] = useState<ThanhToanRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -322,6 +491,42 @@ export function ThanhToanTab() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+const SUB_TABS = [
+  { key: "congno", label: "Theo dõi công nợ", icon: Clock },
+  { key: "lichsu", label: "Lịch sử thanh toán", icon: History },
+] as const;
+
+export function ThanhToanTab() {
+  const [subTab, setSubTab] = useState<(typeof SUB_TABS)[number]["key"]>("congno");
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex gap-1 px-4 pt-3 border-b border-hp-border shrink-0">
+        {SUB_TABS.map((t) => {
+          const Icon = t.icon;
+          const active = subTab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setSubTab(t.key)}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs rounded-t-md border-b-2 transition-colors ${
+                active ? "border-hp-primary text-hp-primary font-medium bg-hp-primary/5" : "border-transparent text-hp-text-muted hover:text-hp-text hover:bg-hp-surface"
+              }`}
+            >
+              <Icon size={13} />
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex-1 overflow-auto">
+        {subTab === "congno" && <TheoDoiCongNoView />}
+        {subTab === "lichsu" && <LichSuThanhToanView />}
+      </div>
     </div>
   );
 }
