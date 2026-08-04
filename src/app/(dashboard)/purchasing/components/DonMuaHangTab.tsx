@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Search, RefreshCw, Trash2, ChevronLeft, ChevronRight, ShoppingCart, X, Save, Edit2, AlertTriangle } from "lucide-react";
+import { Plus, Search, RefreshCw, Trash2, ChevronLeft, ChevronRight, ShoppingCart, X, Save, Edit2, AlertTriangle, Printer } from "lucide-react";
 import { api } from "@/lib/apiClient";
 import { EntityAutocomplete } from "@/components/EntityAutocomplete";
 import { HangHoaMuaHangInput } from "./HangHoaMuaHangInput";
@@ -104,6 +104,155 @@ function tinhChiTietRow(row: ChiTietRow): ChiTietRow {
   return { ...row, thanhTien, tienThue };
 }
 
+interface PrintData {
+  soChungTu: string;
+  tenNCC: string;
+  tenKho?: string;
+  phongBan?: string;
+  congTrinh?: string;
+  ngayDatHang: string;
+  ngayGiaoDuKien?: string;
+  ngayHoaDon?: string;
+  ngayGiaoHangThucTe?: string;
+  congNoNgay?: number;
+  congNoTinhTu?: CongNoTinhTu;
+  chiTiet: ChiTietRow[];
+  chietKhauPhanTram: number;
+  tongTienHang: number;
+  tienChietKhau: number;
+  tongTienThue: number;
+  tongThanhToan: number;
+  ghiChu?: string;
+}
+
+function PrintModal({ data, onClose }: { data: PrintData; onClose: () => void }) {
+  const today = new Date().toLocaleDateString("vi-VN");
+  const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString("vi-VN") : "—");
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4">
+      <div className="bg-white text-gray-900 w-full max-w-3xl max-h-[90vh] flex flex-col rounded-lg shadow-2xl overflow-hidden">
+        <div className="print:hidden flex items-center justify-between px-4 py-2 bg-gray-100 border-b">
+          <span className="text-sm font-medium text-gray-700">Xem trước phiếu đơn mua hàng</span>
+          <div className="flex gap-2">
+            <button onClick={() => window.print()} className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+              <Printer size={14} /> In phiếu
+            </button>
+            <button onClick={onClose} className="px-3 py-1.5 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300">
+              Đóng
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto p-8 print:p-4">
+          <div className="text-center mb-4">
+            <p className="text-xs uppercase tracking-widest text-gray-500">HP CONS</p>
+            <h1 className="text-xl font-bold uppercase mt-1">Đơn Mua Hàng</h1>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Số: {data.soChungTu} — Ngày in: {today}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-x-8 mb-4 text-sm">
+            <div>
+              <span className="text-gray-500">Nhà cung cấp:</span> <strong>{data.tenNCC || "—"}</strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Kho nhận:</span> <strong>{data.tenKho || "—"}</strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Phòng ban:</span> <strong>{data.phongBan || "—"}</strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Công trình:</span> <strong>{data.congTrinh || "—"}</strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Ngày đặt hàng:</span> <strong>{fmtDate(data.ngayDatHang)}</strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Ngày giao dự kiến:</span> <strong>{fmtDate(data.ngayGiaoDuKien)}</strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Ngày xuất hóa đơn:</span> <strong>{fmtDate(data.ngayHoaDon)}</strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Ngày giao hàng thực tế:</span> <strong>{fmtDate(data.ngayGiaoHangThucTe)}</strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Công nợ:</span>{" "}
+              <strong>{data.congNoNgay !== undefined ? `${data.congNoNgay} ngày (tính từ ${CONG_NO_TINH_TU_LABEL[data.congNoTinhTu || "ngay_giao_hang"]})` : "Theo NCC"}</strong>
+            </div>
+          </div>
+          <table className="w-full border-collapse text-sm mb-2">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 px-2 py-1.5 text-center w-8">#</th>
+                <th className="border border-gray-300 px-2 py-1.5 text-left">Tên hàng</th>
+                <th className="border border-gray-300 px-2 py-1.5 text-center w-14">ĐVT</th>
+                <th className="border border-gray-300 px-2 py-1.5 text-right w-16">SL đặt</th>
+                <th className="border border-gray-300 px-2 py-1.5 text-right w-24">Đơn giá</th>
+                <th className="border border-gray-300 px-2 py-1.5 text-right w-14">%Thuế</th>
+                <th className="border border-gray-300 px-2 py-1.5 text-right w-28">Thành tiền</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.chiTiet.map((row, i) => (
+                <tr key={i}>
+                  <td className="border border-gray-300 px-2 py-1 text-center text-gray-500">{i + 1}</td>
+                  <td className="border border-gray-300 px-2 py-1">{row.tenHang}</td>
+                  <td className="border border-gray-300 px-2 py-1 text-center">{row.donViTinh}</td>
+                  <td className="border border-gray-300 px-2 py-1 text-right">{row.soLuongDat}</td>
+                  <td className="border border-gray-300 px-2 py-1 text-right">{(row.donGia || 0).toLocaleString("vi-VN")}</td>
+                  <td className="border border-gray-300 px-2 py-1 text-right">{row.thueGtgt || 0}%</td>
+                  <td className="border border-gray-300 px-2 py-1 text-right">{(row.thanhTien || 0).toLocaleString("vi-VN")}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={6} className="border border-gray-300 px-2 py-1 text-right text-gray-600">
+                  Tổng tiền hàng:
+                </td>
+                <td className="border border-gray-300 px-2 py-1 text-right">{data.tongTienHang.toLocaleString("vi-VN")}</td>
+              </tr>
+              <tr>
+                <td colSpan={6} className="border border-gray-300 px-2 py-1 text-right text-gray-600">
+                  Chiết khấu ({data.chietKhauPhanTram || 0}%):
+                </td>
+                <td className="border border-gray-300 px-2 py-1 text-right">-{data.tienChietKhau.toLocaleString("vi-VN")}</td>
+              </tr>
+              <tr>
+                <td colSpan={6} className="border border-gray-300 px-2 py-1 text-right text-gray-600">
+                  Thuế GTGT:
+                </td>
+                <td className="border border-gray-300 px-2 py-1 text-right">{data.tongTienThue.toLocaleString("vi-VN")}</td>
+              </tr>
+              <tr className="bg-gray-50 font-semibold">
+                <td colSpan={6} className="border border-gray-300 px-2 py-1.5 text-right">
+                  Tổng tiền thanh toán:
+                </td>
+                <td className="border border-gray-300 px-2 py-1.5 text-right">{data.tongThanhToan.toLocaleString("vi-VN")} đ</td>
+              </tr>
+            </tfoot>
+          </table>
+          {data.ghiChu && (
+            <p className="text-sm mb-4">
+              <span className="text-gray-500">Ghi chú:</span> {data.ghiChu}
+            </p>
+          )}
+          <div className="grid grid-cols-3 gap-4 mt-8 text-center text-sm">
+            {["Người lập đơn", "Người phê duyệt", "Nhà cung cấp"].map((name) => (
+              <div key={name}>
+                <p className="font-medium">{name}</p>
+                <p className="text-xs text-gray-400 mt-1">(Ký, ghi rõ họ tên)</p>
+                <div className="mt-12 border-t border-gray-400 pt-1 text-gray-500 text-xs">Họ và tên</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DonHangModal({ khoList, don, onClose, onSaved }: { khoList: KhoRow[]; don: DonHangDetail | null; onClose: () => void; onSaved: () => void }) {
   const isEdit = !!don;
   const today = new Date().toISOString().slice(0, 10);
@@ -147,6 +296,7 @@ function DonHangModal({ khoList, don, onClose, onSaved }: { khoList: KhoRow[]; d
   const [chiTiet, setChiTiet] = useState<ChiTietRow[]>(() => (isEdit && don.chiTiet.length ? don.chiTiet.map((r) => ({ ...r })) : [emptyRow()]));
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [printData, setPrintData] = useState<PrintData | null>(null);
 
   function set<K extends keyof DonHangForm>(k: K, v: DonHangForm[K]) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -180,7 +330,7 @@ function DonHangModal({ khoList, don, onClose, onSaved }: { khoList: KhoRow[]; d
   const tienChietKhau = (tongTienHang * (Number(form.chiet_khau_phan_tram) || 0)) / 100;
   const tongThanhToan = tongTienHang - tienChietKhau + tongTienThue;
 
-  async function handleSave() {
+  async function handleSave(withPrint = false) {
     if (!form.ma_ncc) return setErr("Vui lòng chọn nhà cung cấp");
     if (!form.ngay_dat_hang) return setErr("Vui lòng chọn ngày đặt hàng");
     if (chiTiet.length === 0 || chiTiet.every((r) => !r.tenHang)) return setErr("Vui lòng thêm ít nhất 1 dòng hàng");
@@ -213,12 +363,37 @@ function DonHangModal({ khoList, don, onClose, onSaved }: { khoList: KhoRow[]; d
               thue_gtgt: Number(r.thueGtgt) || 0,
             })),
       };
+      let soChungTu = don?.soChungTu || "";
       if (isEdit) {
         await api.put(`/purchasing/don-hang/${don.soChungTu}`, body);
       } else {
-        await api.post("/purchasing/don-hang", body);
+        const res = await api.post<{ so_chung_tu: string }>("/purchasing/don-hang", body);
+        soChungTu = res.so_chung_tu;
       }
-      onSaved();
+      if (withPrint) {
+        setPrintData({
+          soChungTu,
+          tenNCC: form.ten_ncc,
+          tenKho: khoList.find((k) => k.maKho === form.kho_nhan_id)?.tenKho,
+          phongBan: form.phong_ban,
+          congTrinh: form.cong_trinh,
+          ngayDatHang: form.ngay_dat_hang,
+          ngayGiaoDuKien: form.ngay_giao_du_kien,
+          ngayHoaDon: form.ngay_hoa_don,
+          ngayGiaoHangThucTe: form.ngay_giao_hang_thuc_te,
+          congNoNgay: form.cong_no_ngay === "" ? undefined : Number(form.cong_no_ngay),
+          congNoTinhTu: form.cong_no_tinh_tu,
+          chiTiet,
+          chietKhauPhanTram: Number(form.chiet_khau_phan_tram) || 0,
+          tongTienHang,
+          tienChietKhau,
+          tongTienThue,
+          tongThanhToan,
+          ghiChu: form.ghi_chu,
+        });
+      } else {
+        onSaved();
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : isEdit ? "Lỗi cập nhật đơn mua hàng" : "Lỗi tạo đơn mua hàng");
     } finally {
@@ -465,16 +640,31 @@ function DonHangModal({ khoList, don, onClose, onSaved }: { khoList: KhoRow[]; d
           <button onClick={onClose} className="hp-btn-secondary">
             Hủy
           </button>
-          <button onClick={handleSave} disabled={saving} className="hp-btn-primary gap-1.5">
-            <Save size={14} /> {saving ? "Đang lưu..." : isEdit ? "Cập nhật" : "Lưu"}
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => handleSave(false)} disabled={saving} className="hp-btn-secondary gap-1.5">
+              <Save size={14} /> {saving ? "Đang lưu..." : isEdit ? "Cập nhật" : "Lưu"}
+            </button>
+            <button onClick={() => handleSave(true)} disabled={saving} className="hp-btn-primary gap-1.5">
+              <Printer size={14} /> {saving ? "Đang lưu..." : isEdit ? "Cập nhật và In" : "Lưu và In"}
+            </button>
+          </div>
         </div>
       </div>
+
+      {printData && (
+        <PrintModal
+          data={printData}
+          onClose={() => {
+            setPrintData(null);
+            onSaved();
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function DetailPanel({ don, onClose, onEdit, onDelete }: { don: DonHangDetail; onClose: () => void; onEdit: () => void; onDelete: () => Promise<void> }) {
+function DetailPanel({ don, onClose, onEdit, onDelete, onPrint }: { don: DonHangDetail; onClose: () => void; onEdit: () => void; onDelete: () => Promise<void>; onPrint: () => void }) {
   const [confirmDel, setConfirmDel] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const daNhanMotPhan = don.chiTiet.some((ct) => (ct.soLuongDaNhan || 0) > 0);
@@ -497,6 +687,9 @@ function DetailPanel({ don, onClose, onEdit, onDelete }: { don: DonHangDetail; o
           <TrangThaiBadge trangThai={don.trangThai} />
         </div>
         <div className="flex items-center gap-1">
+          <button onClick={onPrint} className="hp-btn-ghost px-2 py-1 text-xs gap-1 text-hp-text-muted hover:text-hp-text">
+            <Printer size={12} /> In
+          </button>
           <button onClick={onEdit} className="hp-btn-ghost px-2 py-1 text-xs gap-1 text-hp-primary">
             <Edit2 size={12} /> Sửa
           </button>
@@ -628,6 +821,7 @@ export function DonMuaHangTab() {
   const [selectedDon, setSelectedDon] = useState<DonHangDetail | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editDon, setEditDon] = useState<DonHangDetail | null>(null);
+  const [printDon, setPrintDon] = useState<DonHangDetail | null>(null);
   const limit = 20;
 
   useEffect(() => {
@@ -772,9 +966,35 @@ export function DonMuaHangTab() {
             <p className="text-sm">Chọn đơn mua hàng để xem chi tiết</p>
           </div>
         ) : (
-          <DetailPanel don={selectedDon} onClose={() => setSelectedDon(null)} onEdit={() => setEditDon(selectedDon)} onDelete={handleDelete} />
+          <DetailPanel don={selectedDon} onClose={() => setSelectedDon(null)} onEdit={() => setEditDon(selectedDon)} onDelete={handleDelete} onPrint={() => setPrintDon(selectedDon)} />
         )}
       </div>
+
+      {printDon && (
+        <PrintModal
+          data={{
+            soChungTu: printDon.soChungTu,
+            tenNCC: printDon.tenNCC || printDon.maNCC,
+            tenKho: printDon.kho?.tenKho,
+            phongBan: printDon.phongBan,
+            congTrinh: printDon.congTrinh,
+            ngayDatHang: printDon.ngayDatHang,
+            ngayGiaoDuKien: printDon.ngayGiaoDuKien,
+            ngayHoaDon: printDon.ngayHoaDon,
+            ngayGiaoHangThucTe: printDon.ngayGiaoHangThucTe,
+            congNoNgay: printDon.congNoNgay,
+            congNoTinhTu: printDon.congNoTinhTu,
+            chiTiet: printDon.chiTiet,
+            chietKhauPhanTram: printDon.chietKhauPhanTram || 0,
+            tongTienHang: printDon.tongTienHang,
+            tienChietKhau: printDon.tienChietKhau,
+            tongTienThue: printDon.tongTienThue,
+            tongThanhToan: printDon.tongTienThanhToan,
+            ghiChu: printDon.ghiChu,
+          }}
+          onClose={() => setPrintDon(null)}
+        />
+      )}
 
       {showCreate && (
         <DonHangModal
